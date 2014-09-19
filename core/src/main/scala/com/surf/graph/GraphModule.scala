@@ -18,6 +18,7 @@ trait GraphModuleImpl extends GraphModule
     with GraphBaseModuleImpl
     with GraphQueryExecutionContext
     with StandardExecutionContext
+    with GraphObjects
 {
   this : GraphConfigModule =>
 

@@ -13,15 +13,11 @@ import scala.util.{Failure, Success}
  * The main module used to query a Graph Database
  */
 trait GraphQueryModule extends StandardExecutionContext{
-  this : GraphBaseModule =>
-  val helpers : GraphObjects
+  this : GraphBaseModule with GraphObjects =>
 
   val graphQuery : GraphQuery
   trait GraphQuery {
     implicit val executionContext = standardExecutionContext
-
-    import helpers._
-    type idType = helpers.idType
 
     /**
      * getByKey with id = vertexId
@@ -120,12 +116,11 @@ trait GraphQueryModule extends StandardExecutionContext{
 }
 
 trait GraphQueryModuleImpl extends GraphQueryModule with StandardExecutionContext{
-  this : GraphBaseModule   =>
+  this : GraphBaseModule with GraphObjects  =>
 
   val graphQuery = new GraphQueryImpl
 
   class GraphQueryImpl extends GraphQuery {
-    import helpers._
 
     /**
      * @inheritdoc

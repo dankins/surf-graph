@@ -7,14 +7,11 @@ import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 
 import scala.concurrent.Future
 
-trait GraphAPIModule extends StandardExecutionContext{
+trait GraphAPIModule extends StandardExecutionContext with GraphObjects {
   val graphAPI : GraphAPI
-
-  val helpers : GraphObjects
 
   trait GraphAPI {
     implicit val executionContext = standardExecutionContext
-    import helpers._
     /**
      * Takes the passed in object and creates a Vertex
      */
@@ -169,20 +166,18 @@ trait GraphAPIModule extends StandardExecutionContext{
   }
 }
 
-trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
+trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
   this: GraphMutationModule
     with GraphMarshallingModule
     with GraphQueryModule
     with GraphSystemModule
     with GraphConfigModule
+    with GraphObjects
   =>
   val graphAPI = new GraphApiImpl
 
 
   class GraphApiImpl extends GraphAPI {
-    import helpers._
-    import helpers.idType
-
     /**
      * @inheritdoc
      */
@@ -210,7 +205,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
         else (v2, v1)
 
       graphMutation.addEdge(out.id,in.id,label,props,tx).map { e =>
-        Segment[V1,E,V2](v1,helpers.toGraphEdge[E](e),v2,direction)
+        Segment[V1,E,V2](v1,toGraphEdge[E](e),v2,direction)
       }
     }
 
@@ -227,7 +222,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
         else (v2, v1)
 
       graphMutation.addEdgeUnique(out.id,in.id,label,props,tx).map { e =>
-        Segment[V1,E,V2](v1,helpers.toGraphEdge[E](e),v2,direction)
+        Segment[V1,E,V2](v1,toGraphEdge[E](e),v2,direction)
       }
     }
     /**
@@ -235,7 +230,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
      */
     def get[T : VertexHelper](vertexId : idType) : Future[GraphVertex[T]] = transaction { tx =>
       graphQuery.get(vertexId,tx).map { item =>
-        helpers.toGraphVertex[T](item)
+        toGraphVertex[T](item)
       }
     }
 
@@ -244,7 +239,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
      */
     def getEdge[T : EdgeHelper](edgeId : idType) : Future[GraphEdge[T]] = transaction { tx =>
       graphQuery.getEdge(edgeId,tx).map { item =>
-        helpers.toGraphEdge[T](item)
+        toGraphEdge[T](item)
       }
     }
     /**
@@ -303,7 +298,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
      */
     def updateProperty[T : VertexHelper](v : GraphVertex[T], propName : String, newValue : Any ) : Future[GraphVertex[T]] = transaction { tx =>
       graphMutation.updateVertexProperty(v.id,propName,newValue,tx)
-        .flatMap(x => graphQuery.get(v.id,tx).map(helpers.toGraphVertex[T]))
+        .flatMap(x => graphQuery.get(v.id,tx).map(toGraphVertex[T]))
     }
 
     /**
@@ -311,7 +306,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext{
      */
     def updateProperty[T : EdgeHelper](e : GraphEdge[T], propName : String, newValue : Any ) : Future[GraphEdge[T]] = transaction { tx =>
       graphMutation.updateEdgeProperty(e.id,propName,newValue,tx)
-        .flatMap(x => graphQuery.getEdge(e.id,tx).map(helpers.toGraphEdge[T]))
+        .flatMap(x => graphQuery.getEdge(e.id,tx).map(toGraphEdge[T]))
     }
 
     /**

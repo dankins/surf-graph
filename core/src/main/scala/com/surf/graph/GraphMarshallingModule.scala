@@ -1,21 +1,13 @@
 package com.surf.graph
 
-import com.tinkerpop.blueprints.{Edge, Vertex}
-import com.tinkerpop.pipes.util.structures.Row
-
-import scala.util.Try
-
-
 /**
  * Module to convert raw objects to rich case classes
  */
 trait GraphMarshallingModule {
+  this: GraphObjects =>
   val graphMarshalling : GraphMarshalling
 
-  val helpers : GraphObjects
-
   trait GraphMarshalling {
-    import helpers._
     /**
      * Converts a RawSegment to a Segment using the specified implicit Vertex and Edge Helpers
      */
@@ -40,9 +32,8 @@ trait GraphMarshallingModule {
 
 
 trait GraphMarshallingModuleImpl extends GraphMarshallingModule {
+  this: GraphObjects =>
   val graphMarshalling = new GraphMarshallingImpl
-
-  import helpers._
 
   class GraphMarshallingImpl extends GraphMarshalling {
 
@@ -64,28 +55,12 @@ trait GraphMarshallingModuleImpl extends GraphMarshallingModule {
     /**
      * @inheritdoc
      */
-    def castVertex[T : VertexHelper](v : RawVertex) : GraphVertex[T] = {
-      val obj =Try {
-         implicitly[VertexHelper[T]].toObject(v.props)
-      }.recover{
-        case e : NoSuchElementException => throw new Exception(s"could not convert to ${implicitly[VertexHelper[T]].objectType} with props: ${v.props.toString()}")
-      }
-
-
-      GraphVertex(
-        id = v.id,
-        objType =  v.props.get("type").get.toString,
-        objClass =  v.props.get("class").get.toString,
-        obj = obj.get
-      )
-    }
+    def castVertex[T : VertexHelper](v : RawVertex) : GraphVertex[T] = toGraphVertex(v)
 
     /**
      * @inheritdoc
      */
-    def castEdge[E : EdgeHelper](edge : RawEdge) : GraphEdge[E] = {
-      helpers.toGraphEdge[E](edge)
-    }
+    def castEdge[E : EdgeHelper](edge : RawEdge) : GraphEdge[E] = toGraphEdge(edge)
 
     /**
      * @inheritdoc

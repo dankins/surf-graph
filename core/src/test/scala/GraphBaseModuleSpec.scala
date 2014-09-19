@@ -47,8 +47,8 @@ class GraphBaseModuleSpec extends mutable.Specification with NoTimeConversions{
         for {
           v1 <- graphBase.addV()
           v2 <- graphBase.addV()
-          v1x <- graphBase.setVertexProperty(v1.getId.asInstanceOf[graphBase.idType], "foo", "bar")
-          v2x <- graphBase.setVertexProperty(v2.getId.asInstanceOf[graphBase.idType], "foo", "baz")
+          v1x <- graphBase.setVertexProperty(v1.getId.toString, "foo", "bar")
+          v2x <- graphBase.setVertexProperty(v2.getId.toString, "foo", "baz")
           pipe <- graphBase.vertexQuery(query)
         } yield (pipe, v1)
 

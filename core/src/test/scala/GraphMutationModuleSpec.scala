@@ -27,16 +27,17 @@ class GraphMutationModuleSpec extends Specification with NoTimeConversions {
       val v = Await.result(graphMutation.addVertex("test","test",Map("foo"->"bar")), 30 seconds)
       val result = Await.result(graphBase.v(v.id), 30 seconds)
 
+
       result.getProperty[String]("foo") must be equalTo "bar"
       result.getProperty[String]("class") must be equalTo "test"
       result.getProperty[String]("type") must be equalTo "test"
     }
 
     "allow creation of a unique segment" in new TestContext {
-      val edge = Await.result(graphMutation.addEdge("1".asInstanceOf[graphMutation.idType],"2".asInstanceOf[graphMutation.idType],"TEST",Map()), 30 seconds)
+      val edge = Await.result(graphMutation.addEdge("1","2","TEST",Map()), 30 seconds)
       edge.label must be equalTo "TEST"
 
-      val error = Await.result(graphMutation.addEdgeUnique("1".asInstanceOf[graphMutation.idType],"2".asInstanceOf[graphMutation.idType],"TEST",Map()), 30 seconds) must throwA[GraphObjectUniqueConstraintException]
+      val error = Await.result(graphMutation.addEdgeUnique("1","2","TEST",Map()), 30 seconds) must throwA[GraphObjectUniqueConstraintException]
     }
   }
 }

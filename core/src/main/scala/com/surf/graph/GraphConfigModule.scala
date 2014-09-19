@@ -8,6 +8,7 @@ import scala.concurrent.Future
 
 
 trait GraphConfigModule {
+  this: GraphObjects =>
   val rawGraph : ScalaGraph
   def transaction[T](f : Option[TransactionalGraph] => Future[T]) : Future[T] = f(None)
 }

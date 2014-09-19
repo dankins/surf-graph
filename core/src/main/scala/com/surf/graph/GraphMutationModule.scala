@@ -9,14 +9,10 @@ import scala.concurrent.Future
  * Created by dan on 7/7/14.
  */
 trait GraphMutationModule extends StandardExecutionContext {
+  this: GraphObjects =>
   val graphMutation : GraphMutation
 
-  val helpers : GraphObjects
-
   trait GraphMutation {
-    import helpers._
-    import helpers.idType
-
     implicit val executionContext = standardExecutionContext
     // Create
     def addVertex(objType : String, objClass : String, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex]
@@ -38,12 +34,10 @@ trait GraphMutationModule extends StandardExecutionContext {
 }
 
 trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecutionContext {
-  this : GraphBaseModule =>
+  this : GraphObjects  with GraphBaseModule =>
   val graphMutation = new GraphMutationImpl
 
   class GraphMutationImpl extends GraphMutation {
-    import helpers._
-    type idType = helpers.idType
 
 
     def addVertex(objectType : String, objectClass : String, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
