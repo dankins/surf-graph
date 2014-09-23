@@ -1,6 +1,6 @@
 import java.io.FileNotFoundException
 
-import com.surf.graph.{GraphObjectUniqueConstraintException, GraphMutationModuleImpl, GraphBaseModuleImpl, InMemoryGraphConfigModule}
+import com.surf.graph._
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
 import org.specs2.time.NoTimeConversions
@@ -12,7 +12,8 @@ class GraphMutationModuleSpec extends Specification with NoTimeConversions {
 
   trait TestContext extends Scope
   with GraphMutationModuleImpl
-  with InMemoryGraphConfigModule
+  with InMemoryRawGraph
+  with StringGraphIds
   with GraphBaseModuleImpl
   {
     val fixtures = "fixtures/sampleGraph.json"

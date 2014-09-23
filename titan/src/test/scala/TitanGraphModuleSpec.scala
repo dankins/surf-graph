@@ -51,23 +51,23 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
 
 
     "allow creation of a vertex" in new TestContext{
-      val v = Await.result(graphAPI.create(Sample("create-1",1)), 30 seconds)
+      val v = Await.result(graph.create(Sample("create-1",1)), 30 seconds)
       v.objType must be equalTo "Sample"
     }
 
     "allow creation of an edge" in new TestContext{
-      val v1 = Await.result(graphAPI.create(Sample("edgeCreateTest-1",1)), 30 seconds)
-      val v2 = Await.result(graphAPI.create(Sample("edgeCreateTest-2",1)), 30 seconds)
+      val v1 = Await.result(graph.create(Sample("edgeCreateTest-1",1)), 30 seconds)
+      val v2 = Await.result(graph.create(Sample("edgeCreateTest-2",1)), 30 seconds)
 
-      val e = Await.result(graphAPI.createSegment(v1, SampleEdge(), v2), 30 seconds)
+      val e = Await.result(graph.createSegment(v1, SampleEdge(), v2), 30 seconds)
       e.edge.label must be equalTo "SampleEdge"
     }
 
     "let you select from the graph" in new TestContext{
-      val v1 = Await.result(graphAPI.create(Sample("query-1",1)), 30 seconds)
+      val v1 = Await.result(graph.create(Sample("query-1",1)), 30 seconds)
       val query = new GremlinScalaPipeline[Vertex, Vertex].has("id", v1.id)
 
-      val result = Await.result(graphAPI.select[Sample](query) , 30 seconds)
+      val result = Await.result(graph.select[Sample](query) , 30 seconds)
 
       result.id must be equalTo v1.id
     }
@@ -77,10 +77,10 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
 
       val (result, theid) = Await.result(
         for {
-          v1 <- graphAPI.create(Sample("update-1",1))
-          v2 <- graphAPI.create(Sample("update-2",1))
-          v1x <- graphAPI.update(v1.copy(obj = v1.obj.copy(fieldA = "update-3")))
-          result <- graphAPI.select[Sample](query)
+          v1 <- graph.create(Sample("update-1",1))
+          v2 <- graph.create(Sample("update-2",1))
+          v1x <- graph.update(v1.copy(obj = v1.obj.copy(fieldA = "update-3")))
+          result <- graph.select[Sample](query)
         } yield (result, v1.id)
 
 
@@ -89,16 +89,16 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
       result.id must be equalTo theid
       result.obj.fieldA must be equalTo "update-3"
     }
-    "allow edge queries"  in new TestContext{
+    "allow edge queries"  in new TestContext {
       def filter(id : String) = new GremlinScalaPipeline[Edge,Edge] .has("id",id)
 
       val (result, v1) = Await.result(
         for {
-          v1 <- graphAPI.create(Sample("edgequery-1",1))
-          v2 <- graphAPI.create(Sample("edgequery-2",1))
-          e <- graphAPI.createSegment(v1,SampleEdge(),v2)
-          e2 <- graphAPI.createSegment(v1,SampleEdge(),v2)
-          result <- graphAPI.getEdge[SampleEdge](e.edge.id)
+          v1 <- graph.create(Sample("edgequery-1",1))
+          v2 <- graph.create(Sample("edgequery-2",1))
+          e <- graph.createSegment(v1,SampleEdge(),v2)
+          e2 <- graph.createSegment(v1,SampleEdge(),v2)
+          result <- graph.getEdge[SampleEdge](e.edge.id)
         } yield (result, v1)
       , 30 seconds)
 

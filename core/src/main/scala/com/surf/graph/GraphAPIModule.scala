@@ -7,11 +7,12 @@ import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 
 import scala.concurrent.Future
 
-trait GraphAPIModule extends StandardExecutionContext with GraphObjects {
-  val graphAPI : GraphAPI
+trait GraphAPIModule extends IdType {
+  val graph : GraphAPI
 
   trait GraphAPI {
-    implicit val executionContext = standardExecutionContext
+    import objects._
+
     /**
      * Takes the passed in object and creates a Vertex
      */
@@ -167,17 +168,18 @@ trait GraphAPIModule extends StandardExecutionContext with GraphObjects {
 }
 
 trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
-  this: GraphMutationModule
-    with GraphMarshallingModule
+    this: RawGraph
+    with GraphMutationModule
     with GraphQueryModule
     with GraphSystemModule
-    with GraphConfigModule
-    with GraphObjects
   =>
-  val graphAPI = new GraphApiImpl
+  val graph = new GraphApiImpl
 
 
   class GraphApiImpl extends GraphAPI {
+    import objects._
+    implicit val executionContext = standardExecutionContext
+
     /**
      * @inheritdoc
      */
@@ -189,7 +191,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
       // add the vertex to the graph and return the GraphVertex
       validate(obj,tx).flatMap { validated =>
         graphMutation.addVertex(objType, objClass, props,validated._2)
-          .map(graphMarshalling.castVertex[T])
+          .map(toGraphVertex[T])
       }
     }
     /**
@@ -246,21 +248,21 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
      * @inheritdoc
      */
     def getByKey[T : VertexHelper](key : String, value : Any) : Future[GraphVertex[T]] = transaction { tx =>
-      graphQuery.getByKey(key,value,tx).map(graphMarshalling.castVertex[T])
+      graphQuery.getByKey(key,value,tx).map(toGraphVertex[T])
     }
 
     /**
      * @inheritdoc
      */
     def getSegment[O : VertexHelper, E : EdgeHelper, I : VertexHelper](edgeId : idType) : Future[Segment[O,E,I]] = transaction { tx =>
-      graphQuery.getSegment(edgeId,tx).map(graphMarshalling.castSegment[O,E,I])
+      graphQuery.getSegment(edgeId,tx).map(toGraphSegment[O,E,I])
     }
 
     /**
      * @inheritdoc
      */
     def getSegmentFromVertices[O : VertexHelper, E : EdgeHelper, I : VertexHelper](v1 : idType, v2 : idType, label : String ) : Future[Option[Segment[O,E,I]]] = transaction { tx =>
-      graphQuery.getSegmentFromVertices(v1,v2,label,tx).map(_.map(graphMarshalling.castSegment[O,E,I]))
+      graphQuery.getSegmentFromVertices(v1,v2,label,tx).map(_.map(toGraphSegment[O,E,I]))
     }
     /**
      * @inheritdoc
@@ -269,7 +271,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
       val label = implicitly[EdgeHelper[E]].label
 
       graphQuery.getEdges(vertexId,direction,label,tx).map{ rawEdgeTuples =>
-        rawEdgeTuples.map(graphMarshalling.rawEdgeTuple[E,V])
+        rawEdgeTuples.map(rawEdgeTuple[E,V])
       }
     }
     /**
@@ -280,7 +282,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
       val allProps = props ++ Map("type" -> v.objType,"class" -> v.objClass)
       graphQuery.validateUpdate(v,tx).flatMap { x=>
         graphMutation.updateVertex(v.id,allProps,tx)
-          .map(graphMarshalling.castVertex[T])
+          .map(toGraphVertex[T])
       }
     }
 
@@ -290,7 +292,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     def update[T : EdgeHelper](v : GraphEdge[T] ) : Future[GraphEdge[T]] = transaction { tx =>
       val props = implicitly[EdgeHelper[T]].toMap(v.obj)
       graphMutation.updateEdge(v.id,props,tx)
-        .map(graphMarshalling.castEdge[T])
+        .map(toGraphEdge[T])
     }
 
     /**
@@ -330,7 +332,10 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
       graphQuery.validate(v,tx)
     }
 
-    def validate[T : VertexHelper](v : T, tx : Option[TransactionalGraph]) : Future[(T,Option[TransactionalGraph])] = graphQuery.validate(v,tx).map((_, tx))
+    def validate[T : VertexHelper](v : T, tx : Option[TransactionalGraph]) : Future[(T,Option[TransactionalGraph])] = {
+      graphQuery.validate(v,tx)
+        .map((_, tx))
+    }
 
     /**
      * @inheritdoc
@@ -345,7 +350,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
 
       graphQuery.query(query,tx).map { results =>
         results.map { raw =>
-          graphMarshalling.castVertex[T](raw)
+          toGraphVertex[T](raw)
         }
       }
     }
@@ -358,7 +363,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
 
       graphQuery.querySegments(filter,direction,edgeLabel,tx).map { results =>
         results.map { raw =>
-          graphMarshalling.castSegment[V1,E,V2](raw)
+          toGraphSegment[V1,E,V2](raw)
         }
       }
     }

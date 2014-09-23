@@ -1,26 +1,30 @@
 package com.surf.graph
 
 /**
- * Created by dan on 7/8/14.
+ * Main entry point for Graphs
  */
-trait GraphModule
-  extends GraphAPIModule
+trait GraphModule extends GraphAPIModule with IdType
 {
+  type GraphIdType
   val graph : GraphAPI
+  /*
+  val objects = new Object with GraphObjects {
+    type idType = GraphIdType
+  }
+  */
 }
+
+trait GraphModuleWithLongIds extends GraphModule with LongGraphIds
 
 trait GraphModuleImpl extends GraphModule
   with GraphAPIModuleImpl
-    with GraphQueryModuleImpl
-    with GraphMutationModuleImpl
-    with GraphMarshallingModuleImpl
-    with GraphSystemModuleImpl
-    with GraphBaseModuleImpl
-    with GraphQueryExecutionContext
-    with StandardExecutionContext
-    with GraphObjects
+  with GraphBaseModuleImpl
+  with GraphQueryModuleImpl
+  with GraphMutationModuleImpl
+  with GraphSystemModuleImpl
+  with GraphQueryExecutionContext
+  with StandardExecutionContext
 {
-  this : GraphConfigModule =>
+  this: RawGraph with IdType =>
 
-  val graph = new GraphApiImpl
 }

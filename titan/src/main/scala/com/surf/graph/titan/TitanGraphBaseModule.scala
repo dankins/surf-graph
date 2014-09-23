@@ -12,7 +12,7 @@ import com.tinkerpop.pipes.util.structures.Row
 import scala.concurrent.Future
 
 trait TitanGraphBaseModule extends GraphBaseModuleImpl with GraphQueryExecutionContext {
-  this: TitanGraphConfigModule   =>
+  this: TitanRawGraph   =>
 
   override val graphBase = new TitanGraphBase
 

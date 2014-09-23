@@ -5,14 +5,12 @@ import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 
 import scala.concurrent.Future
 
-/**
- * Created by dan on 7/7/14.
- */
 trait GraphMutationModule extends StandardExecutionContext {
-  this: GraphObjects =>
+  this: GraphBaseModule with IdType =>
   val graphMutation : GraphMutation
 
   trait GraphMutation {
+    import objects._
     implicit val executionContext = standardExecutionContext
     // Create
     def addVertex(objType : String, objClass : String, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex]
@@ -34,12 +32,11 @@ trait GraphMutationModule extends StandardExecutionContext {
 }
 
 trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecutionContext {
-  this : GraphObjects  with GraphBaseModule =>
+  this: GraphBaseModule with IdType =>
   val graphMutation = new GraphMutationImpl
 
   class GraphMutationImpl extends GraphMutation {
-
-
+    import objects._
     def addVertex(objectType : String, objectClass : String, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
       val allProps = props ++ Map("type" -> objectType,"class" -> objectClass)
 

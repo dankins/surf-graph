@@ -2,7 +2,7 @@ package com.surf.graph.titan
 
 import java.util.UUID
 
-import com.surf.graph.{EdgeHelper, GraphBaseModule, GraphConfigModule, VertexHelper}
+import com.surf.graph.{EdgeHelper, GraphBaseModule, VertexHelper}
 import com.tinkerpop.blueprints.Vertex
 import com.tinkerpop.blueprints.util.wrappers.batch.{BatchGraph, VertexIDType}
 
@@ -11,7 +11,7 @@ import scala.collection.JavaConversions.mapAsJavaMap
 
 trait BatchGraphModule
 {
-  this : TitanGraphConfigModule with GraphBaseModule =>
+  this : TitanRawGraph with GraphBaseModule =>
 
   lazy val batchGraphRaw = new BatchGraph(titanGraph, VertexIDType.STRING, 5000)
   val batchGraph = new BatchGraphApi()

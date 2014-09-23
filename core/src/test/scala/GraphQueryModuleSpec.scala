@@ -2,7 +2,7 @@ import java.io.FileNotFoundException
 
 import com.tinkerpop.blueprints.{Vertex, Direction}
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
-import com.surf.graph.{InMemoryGraphConfigModule, GraphQueryModuleImpl, GraphBaseModuleImpl}
+import com.surf.graph.{StringGraphIds, InMemoryRawGraph, GraphQueryModuleImpl, GraphBaseModuleImpl}
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
 import org.specs2.time.NoTimeConversions
@@ -16,7 +16,8 @@ class GraphQueryModuleSpec extends Specification with NoTimeConversions {
 
   trait TestContext extends Scope
     with GraphQueryModuleImpl
-    with InMemoryGraphConfigModule
+    with InMemoryRawGraph
+    with StringGraphIds
     with GraphBaseModuleImpl
   {
     val fixtures = "/fixtures/sampleGraph.json"

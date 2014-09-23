@@ -13,14 +13,14 @@ import scala.concurrent.Future
  * Module for retrieving raw objects from Graph. Does not convert to/from objects
  */
 trait GraphBaseModule {
-  this: GraphQueryExecutionContext with GraphObjects =>
+  this: IdType =>
   val graphBase : GraphBase
   //private lazy val rawGraph = graphConfig.initialize()
   //val rawGraph : ScalaGraph
 
   trait GraphBase {
+    import objects._
 
-    implicit val executionContext = graphQueryExecutionContext
     //def query(query : GremlinScalaPipeline[Vertex,_], select : Seq[String]) : Future[GremlinScalaPipeline[Vertex,Row[_]]]
     def addV(tx : Option[TransactionalGraph] = None) : Future[Vertex]
     def addE(out : Vertex, in : Vertex, label : String, tx : Option[TransactionalGraph] = None) : Future[Edge]
@@ -70,11 +70,13 @@ trait GraphBaseModule {
 
 }
 trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContext {
-  this: GraphConfigModule with GraphObjects =>
+  this: RawGraph with IdType =>
 
   val graphBase = new GraphBaseImpl
 
   class GraphBaseImpl extends GraphBase {
+    import objects._
+    implicit val executionContext = graphQueryExecutionContext
 
     def transactionOrBase(txOpt : Option[TransactionalGraph]) : Graph = txOpt.getOrElse(rawGraph)
 

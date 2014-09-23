@@ -6,21 +6,21 @@ import com.tinkerpop.gremlin.scala.ScalaGraph
 
 import scala.concurrent.Future
 
-
-trait GraphConfigModule {
-  this: GraphObjects =>
+trait RawGraph {
   val rawGraph : ScalaGraph
   def transaction[T](f : Option[TransactionalGraph] => Future[T]) : Future[T] = f(None)
 }
 
-trait InMemoryGraphConfigModule extends GraphConfigModule with StringIds {
+trait InMemoryRawGraph extends RawGraph {
   val rawGraph : ScalaGraph = new TinkerGraph()
-
 }
+trait InMemoryGraph extends GraphModuleImpl with InMemoryRawGraph
 
-trait FileGraphConfigModule extends GraphConfigModule with StringIds {
+trait FileGraphRawGraph extends RawGraph {
   val graphFileLocation : String
   lazy val rawGraph : ScalaGraph = new TinkerGraph(graphFileLocation, TinkerGraph.FileType.GRAPHSON)
-
 }
+trait FileGraph extends GraphModuleImpl with FileGraphRawGraph
+
+
 

@@ -7,15 +7,13 @@ trait TitanGraphModule extends GraphModule
 with GraphAPIModuleImpl
 with GraphQueryModuleImpl
 with GraphMutationModuleImpl
-with GraphMarshallingModuleImpl
 with GraphSystemModuleImpl
 with TitanGraphBaseModule
 with GraphQueryExecutionContext
 with StandardExecutionContext
-with TitanGraphConfigModule
+with TitanRawGraph
 {
   val storageBackend : StorageBackends
-  val graph = new GraphApiImpl
 }
 
 trait TitanCassandraGraphModule extends TitanGraphModule {

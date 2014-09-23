@@ -1,4 +1,4 @@
-import com.surf.graph.{InMemoryGraphConfigModule, GraphBaseModuleImpl}
+import com.surf.graph.{StringGraphIds, LongGraphIds, InMemoryRawGraph, GraphBaseModuleImpl}
 import com.tinkerpop.blueprints.{Edge, Vertex}
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 import org.specs2.specification.Scope
@@ -15,7 +15,8 @@ class GraphBaseModuleSpec extends mutable.Specification with NoTimeConversions{
 
   trait TestContext extends Scope
     with GraphBaseModuleImpl
-    with InMemoryGraphConfigModule
+    with InMemoryRawGraph
+    with StringGraphIds
 
   "GraphBaseModuleSpec" should {
 
