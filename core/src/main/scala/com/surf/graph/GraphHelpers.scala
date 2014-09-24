@@ -2,7 +2,6 @@ package com.surf.graph
 
 import com.tinkerpop.gremlin.scala.{ScalaVertex, GremlinScalaPipeline}
 import scala.util.{Failure, Success, Try}
-import java.util.UUID
 import com.tinkerpop.blueprints.Vertex
 
 trait VertexHelper[T] {

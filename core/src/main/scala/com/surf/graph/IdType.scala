@@ -1,10 +1,5 @@
 package com.surf.graph
 
-
-
-
-
-
 trait IdType {
   val objects : GraphObjects
 }
@@ -23,17 +18,4 @@ trait StringGraphIds extends IdType {
     def stringToId(id : String) : String = id
     def idToString(id : String) : String = id
   }
-}
-
-
-trait StringIds extends IdType {
-  type idType = String
-  def stringToId(id : String) : idType = id
-  def idToString(id : String) : String = id
-}
-
-trait LongIds extends IdType {
-  type idType = Long
-  def stringToId(id : String) : idType = id.toLong
-  def idToString(id : Long) : String = id.toString
 }
