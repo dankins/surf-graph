@@ -20,13 +20,13 @@ trait GraphMutationModule extends StandardExecutionContext {
 
     // Update
     def updateVertex(vertexId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawVertex]
-    def updateEdge(edgeId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawEdge]
+    def updateEdge(edgeId : edgeIdType, props : Map[String,Any])(implicit graph : Graph) : Future[RawEdge]
     def updateVertexProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String]
-    def updateEdgeProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String]
+    def updateEdgeProperty(id : edgeIdType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String]
 
     // Delete
     def deleteVertex(vertexId : idType)(implicit graph : Graph) : Future[String]
-    def deleteEdge(edgeId : idType)(implicit graph : Graph) : Future[String]
+    def deleteEdge(edgeId : edgeIdType)(implicit graph : Graph) : Future[String]
   }
 
 }
@@ -55,7 +55,7 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
         inV <- graphBase.v(inId)
         edge <- graphBase.addE(outV,inV,label)
         complete  <- graphBase.setProperties(edge,props)
-      } yield RawEdge(edge.getId.asInstanceOf[idType],label,props)
+      } yield RawEdge(graphBase.getEdgeId(edge),label,props)
     }
 
     def addEdgeUnique(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge] = {
@@ -78,8 +78,8 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
 
       Future.sequence(futures).map(x => RawVertex(vertexId,modifiedProps))
     }
-    def updateEdge(edgeId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawEdge] = {
-      throw new Exception("not implemented")
+    def updateEdge(edgeId : edgeIdType, props : Map[String,Any])(implicit graph : Graph) : Future[RawEdge] = {
+      throw new UnsupportedOperationException("not implemented")
     }
     def updateVertexProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String] = Future {
       value match {
@@ -89,7 +89,7 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
 
       "Operation Successful"
     }
-    def updateEdgeProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String] = Future {
+    def updateEdgeProperty(id : edgeIdType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String] = Future {
       value match {
         case None => // don't set the property if None
         case _ => graphBase.setEdgeProperty(id,fieldName,value)
@@ -101,7 +101,7 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
       graphBase.v(vertexId).map(graphBase.removeVertex)
       "Operation Successful"
     }
-    def deleteEdge(edgeId : idType)(implicit graph : Graph) : Future[String] = Future {
+    def deleteEdge(edgeId : edgeIdType)(implicit graph : Graph) : Future[String] = Future {
       graphBase.e(edgeId).map(graphBase.removeEdge)
       "Operation Successful"
     }

@@ -4,9 +4,18 @@ import com.tinkerpop.blueprints.Direction
 
 trait GraphObjects {
     type idType
+    type serializedIdType
+    type edgeIdType
+    type serializedEdgeIdType
+
+    implicit def serializeVertexId(id : idType) : serializedIdType
+    implicit def deserializeVertexId(id : serializedIdType) : idType
+
+    implicit def serializeEdgeId(id : edgeIdType) : serializedEdgeIdType
+    implicit def deserializeEdgeId(id : serializedEdgeIdType) : edgeIdType
 
     case class GraphVertex[+T] (id : idType, objType : String, objClass : String, obj : T)
-    case class GraphEdge[+T] (id : idType, label : String, obj : T)
+    case class GraphEdge[+T] (id : edgeIdType, label : String, obj : T)
 
     case class EdgeTuple[E,V](edge : GraphEdge[E], vertex : GraphVertex[V], direction : Direction)
     case class VertexEdges[V1,E,V2](v : GraphVertex[V1], items : Seq[EdgeTuple[E,V2]])
@@ -14,7 +23,7 @@ trait GraphObjects {
     case class Segment[V1,E,V2](v1 : GraphVertex[V1], edge : GraphEdge[E], v2 : GraphVertex[V2], direction : Direction)
 
     case class RawVertex(id : idType, props : Map[String,Any])
-    case class RawEdge(id : idType, label : String, props : Map[String,Any])
+    case class RawEdge(id : edgeIdType, label : String, props : Map[String,Any])
 
     case class RawEdgeTuple(edge : RawEdge, vertex : RawVertex, direction : Direction)
     case class RawVertexEdges(v : RawVertex, items : Seq[RawEdgeTuple])

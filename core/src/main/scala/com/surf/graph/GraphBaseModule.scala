@@ -8,7 +8,6 @@ import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 import com.tinkerpop.pipes.util.structures.Row
 import com.typesafe.scalalogging.LazyLogging
 
-import java.lang.{Iterable => JIterable}
 import scala.concurrent.Future
 
 
@@ -29,25 +28,26 @@ trait GraphBaseModule {
     def addE(out : Vertex, in : Vertex, label : String)(implicit graph : Graph) : Future[Edge]
 
     def v(id : idType)(implicit graph : Graph) : Future[Vertex]
-    def e(id : idType)(implicit graph : Graph) : Future[Edge]
+    def e(id : edgeIdType)(implicit graph : Graph) : Future[Edge]
 
     def removeVertex(v : Vertex)(implicit graph : Graph) : Future[Unit]
     def removeEdge(e : Edge)(implicit graph : Graph) : Future[Unit]
 
     def setVertexProperty(id : idType, propName : String, value : Any)(implicit graph : Graph) : Future[Unit]
 
-    def setEdgeProperty(id : idType, propName : String, value : Any)(implicit graph : Graph) : Future[Unit]
+    def setEdgeProperty(id : edgeIdType, propName : String, value : Any)(implicit graph : Graph) : Future[Unit]
     def setProperties(edge : Edge, props : Map[String,Any]) : Future[Edge]
 
     def query[S,E](pipe : GremlinScalaPipeline[Graph,Graph] => GremlinScalaPipeline[S,E])(implicit graph : Graph) : Future[Seq[E]]
     def queryV[S,E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]]
     def queryV[S,E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]]
-    def queryE[S,E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]]
+    def queryE[S,E](edgeId : edgeIdType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]]
     def queryE[S,E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]]
 
     def shutdown(implicit graph : Graph) : Unit
     def loadJson(is : InputStream)(implicit graph : Graph) : Unit
 
+    def getEdgeId(edge : Edge) : edgeIdType
     /**
      * Takes a Row[_] object and extracts the vertex and converts to a RawVertex
      * @param row - The Row[_] object returned from running .select(...) on a Pipeline
@@ -123,7 +123,7 @@ trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContex
     /**
      * @inheritdoc
      */
-    def e(id: idType)(implicit graph : Graph) = Future(graph.getEdge(id))
+    def e(id: edgeIdType)(implicit graph : Graph) = Future(graph.getEdge(id))
 
     /**
      * @inheritdoc
@@ -142,7 +142,7 @@ trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContex
       graph.getVertex(id).setProperty(propName,value)
     }
 
-    def setEdgeProperty(id : idType, propName : String, value : Any)(implicit graph : Graph) = Future{
+    def setEdgeProperty(id : edgeIdType, propName : String, value : Any)(implicit graph : Graph) = Future{
       graph.getEdge(id).setProperty(propName,value)
     }
     /**
@@ -162,6 +162,7 @@ trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContex
       RawVertex(v.getId.asInstanceOf[idType],props)
     }
 
+    def getEdgeId(edge : Edge) : edgeIdType = edge.getId.asInstanceOf[edgeIdType]
     /**
      * @inheritdoc
      */
@@ -169,7 +170,7 @@ trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContex
       val e = row.getColumn(edgeName).asInstanceOf[Edge]
       //val props = row.getColumn(propsName).asInstanceOf[java.util.HashMap[String,Any]].asScala.toMap
       val props = row.getColumn(propsName).asInstanceOf[Map[String,Any]]
-      RawEdge(e.getId.asInstanceOf[idType],e.getLabel,props)
+      RawEdge(e.getId.asInstanceOf[edgeIdType],e.getLabel,props)
     }
 
     def rowToRawSegment(row : Row[_], outLabel : String = "out", outProps : String = "out-props", edgeLabel : String = "edge", edgeProps  : String = "edge-props", inLabel : String = "in", inProps : String = "in-props") : RawSegment = {
@@ -190,6 +191,7 @@ trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContex
 
     def queryV[S,E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]] = Future{
       val v = graph.getVertex(vertexId)
+      if(v == null) throw new ObjectNotFoundException(s"Could find vertex with id#$vertexId")
       pipe(new GremlinScalaPipeline[Vertex,Vertex].start(v)).toList()
     }
     def queryV[S,E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]] = Future{
@@ -201,8 +203,9 @@ trait GraphBaseModuleImpl extends GraphBaseModule with GraphQueryExecutionContex
       pipe(GremlinScalaPipeline.fromElements(vertices)).toList()
     }
     */
-    def queryE[S,E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]] = Future{
+    def queryE[S,E](edgeId : edgeIdType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]] = Future{
       val e = graph.getEdge(edgeId)
+      if(e == null) throw new ObjectNotFoundException(s"Could find edge with id#$edgeId")
       pipe(new GremlinScalaPipeline[Edge,Edge].start(e)).toList()
     }
     def queryE[S,E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]] = Future{

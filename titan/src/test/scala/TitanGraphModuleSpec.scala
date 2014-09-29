@@ -2,6 +2,7 @@ import com.surf.graph.{SimpleEdgeHelper, DefaultVertexHelper}
 import com.surf.graph.titan._
 import com.tinkerpop.blueprints.{Edge, Vertex}
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
+import com.typesafe.scalalogging.LazyLogging
 import org.specs2.specification.Scope
 import org.specs2.time.NoTimeConversions
 
@@ -13,7 +14,7 @@ import org.specs2._
 
 class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
 
-  trait TestContext extends Scope with TitanInMemoryGraphModule {
+  trait TestContext extends Scope with TitanInMemoryGraphModule with LazyLogging {
     val mgmt = titanGraph.getManagementSystem
     val fieldA = mgmt.makePropertyKey("Sample:fieldA").dataType(classOf[String]).make()
     mgmt.buildIndex("fieldAIndex",classOf[Vertex]).addKey(fieldA).unique().buildCompositeIndex()
@@ -63,6 +64,11 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
       val v2 = Await.result(graph.create(Sample("edgeCreateTest-2",1)), 30 seconds)
 
       val e = Await.result(graph.createSegment(v1, SampleEdge(), v2), 30 seconds)
+
+      val testLong = Long.MinValue
+      logger.info(s"TEST: ${testLong.getClass.getCanonicalName}")
+      logger.info(s"VERTEX: ${e.v1.id} - ${e.v1.id.toString} - ${e.v1.id.getClass.getCanonicalName}")
+      logger.info(s"EDGE: ${e.edge.id} - ${e.edge.id.toString} - ${e.edge.id.getClass.getCanonicalName}")
       e.edge.label must be equalTo "SampleEdge"
     }
 

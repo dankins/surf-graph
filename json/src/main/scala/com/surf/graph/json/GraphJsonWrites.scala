@@ -1,23 +1,49 @@
-package models
+package com.surf.graph.json
 
 import com.surf.graph.GraphAPIModule
 import com.tinkerpop.blueprints.Direction
-import play.api.libs.json.{Reads, JsValue, Writes, Json}
+import play.api.libs.json._
 
 
 trait GraphJsonWrites {
   this: GraphAPIModule =>
   import objects._
 
-  implicit def writesId : Writes[idType]
-  implicit def readsId : Reads[idType]
+  implicit def writesVertexId : Writes[serializedIdType]
+  implicit def writesEdgeId : Writes[serializedEdgeIdType]
+  implicit def readsVertexId : Reads[serializedIdType]
+  implicit def readsEdgeId : Reads[serializedEdgeIdType]
+
+  implicit def writesVertexIdConv : Writes[idType] = new Writes[idType]{
+    def writes(obj : idType) : JsValue = Json.toJson(obj : serializedIdType)
+  }
+  implicit def writesEdgeIdConv : Writes[edgeIdType] = new Writes[edgeIdType]{
+    def writes(obj : edgeIdType) : JsValue = Json.toJson(obj : serializedEdgeIdType)
+  }
+
+  implicit def readsVertexIdConv : Reads[idType] = new Reads[idType]{
+    def reads(json : JsValue) : JsResult[idType] = {
+        json.validate[serializedIdType].map( x => x : idType ) // implicitly convert serialized id to actual ID type
+    }
+  }
+  implicit def readsEdgeIdConv : Reads[edgeIdType] = new Reads[edgeIdType]{
+    def reads(json : JsValue) : JsResult[edgeIdType] = {
+      json.validate[serializedEdgeIdType].map( x => x : edgeIdType ) // implicitly convert serialized id to actual ID type
+    }
+  }
 
   implicit def writesEdge[E](implicit objWrites: Writes[E]) = new Writes[GraphEdge[E]] {
-    def writes(value: GraphEdge[E]): JsValue = Json.obj("id" -> value.id, "label" -> value.label, "object"->value.obj)
+    def writes(value: GraphEdge[E]): JsValue = {
+      val serializedId : serializedEdgeIdType = value.id
+      Json.obj("id" -> serializedId, "label" -> value.label, "object"->value.obj)
+    }
   }
 
   implicit def writesVertex[E](implicit objWrites: Writes[E]) = new Writes[GraphVertex[E]]{
-    def writes(value: GraphVertex[E]): JsValue = Json.obj("id"->value.id,"type"->value.objType,"class"->value.objClass,"object"->value.obj)
+    def writes(value: GraphVertex[E]): JsValue = {
+      val serializedId : serializedIdType = value.id
+      Json.obj("id"->serializedId,"type"->value.objType,"class"->value.objClass,"object"->value.obj)
+    }
   }
 
   implicit def writesEdgeTuple[E,V](implicit edgeWrites: Writes[E], vertexWrites : Writes[V]) = new Writes[EdgeTuple[E,V]] {

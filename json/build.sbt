@@ -8,5 +8,5 @@ scalaVersion := "2.11.2"
 
 libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-json" % "2.3.4",
-  "com.surf.graph" % "surf-graph-core_2.10" % "0.1-SNAPSHOT"
+  "com.surf.graph" %% "surf-graph-core" % "0.1-SNAPSHOT"
 )
