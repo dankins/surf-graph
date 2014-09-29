@@ -2,7 +2,7 @@ package com.surf.graph
 
 import java.io.InputStream
 
-import com.tinkerpop.blueprints.{TransactionalGraph, Vertex, Direction}
+import com.tinkerpop.blueprints._
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 
 import scala.concurrent.Future
@@ -36,8 +36,8 @@ trait GraphAPIModule extends IdType {
 
     /**
      * TODO
-     * @param edgeId
-     * @tparam T
+     * @param edgeId - id of the edge to retrieve
+     * @tparam T - the type of edge
      * @return
      */
     def getEdge[T : EdgeHelper](edgeId : idType) : Future[GraphEdge[T]]
@@ -125,37 +125,40 @@ trait GraphAPIModule extends IdType {
 
     /**
      * Filters using a graph pipeline and returns the matching vertex objects
-     * @param filter - the pipeline used to filter the objects
+     * @param pipe - the pipeline used to filter the objects
      * @tparam T - the type of the objects that will be returned
      */
-    def query[T : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[GraphVertex[T]]]
+
+    def queryV[T : VertexHelper](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[GraphVertex[T]]]
+    def queryV[T : VertexHelper](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]): Future[Seq[GraphVertex[T]]]
+    def queryE[E : EdgeHelper](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge]) : Future[Seq[GraphEdge[E]]]
+    def queryE[E: EdgeHelper](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge]): Future[Seq[GraphEdge[E]]]
+
+    def genericQueryV[E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E]) : Future[Seq[E]]
+    def genericQueryV[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E]) : Future[Seq[E]]
+    def genericQueryE[E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E]) : Future[Seq[E]]
+    def genericQueryE[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E]) : Future[Seq[E]]
 
     /**
      * Runs the given filter to retrieve a set of Vertices, then retrieves edges specified by the EdgeHelper
      * @param filter - the query to run to retrieve the main set of edges
      * @param direction - the direction of the Edges to retrieve
-     * @tparam V1
-     * @tparam E
-     * @tparam V2
-     * @return
+     * @tparam V1 - type of the in vertex
+     * @tparam E - type of the in edge
+     * @tparam V2 - type of the out vertex
      */
-    def querySegments[V1 : VertexHelper, E : EdgeHelper, V2 : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex], direction : Direction) : Future[Seq[Segment[V1,E,V2]]]
+    def querySegments[V1 : VertexHelper, E : EdgeHelper, V2 : VertexHelper](direction : Direction,vertexId : idType)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[Segment[V1,E,V2]]]
 
     /**
      * TODO
      */
-    def genericQuery[S,E](pipe : GremlinScalaPipeline[S,E]) : Future[List[E]]
-
-    /**
-     * TODO
-     */
-    def genericEdgeQuery[S,E](pipe : GremlinScalaPipeline[S,E]) : Future[List[E]]
+    def querySegments[V1 : VertexHelper, E : EdgeHelper, V2 : VertexHelper](direction : Direction,key : String, value : Any)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[Segment[V1,E,V2]]]
     /**
      * Very similar to query, except the end pipeline expects only a single object and will throw an exception otherwise
-     * @param filter - the pipeline used to select the object
-     * @tparam T - the type of object to be returned
+     * @param pipe - the pipeline used to select the object
      */
-    def select[T : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex]) : Future[GraphVertex[T]]
+    def select[T : VertexHelper](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[GraphVertex[T]]
+    def select[T : VertexHelper](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[GraphVertex[T]]
 
     /**
      * Will close the connection to the graph database
@@ -175,11 +178,11 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
   =>
   val graph = new GraphApiImpl
 
-
   class GraphApiImpl extends GraphAPI {
     import objects._
-    implicit val executionContext = standardExecutionContext
+    implicit lazy val executionContext = standardExecutionContext
 
+    def txOrRaw(tx : Option[TransactionalGraph]) : Graph = tx.getOrElse(rawGraph)
     /**
      * @inheritdoc
      */
@@ -189,8 +192,8 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
       val props = implicitly[VertexHelper[T]].toMap(obj)
 
       // add the vertex to the graph and return the GraphVertex
-      validate(obj,tx).flatMap { validated =>
-        graphMutation.addVertex(objType, objClass, props,validated._2)
+      validate(obj,txOrRaw(tx)).flatMap { validated =>
+        graphMutation.addVertex(objType, objClass, props)(txOrRaw(tx))
           .map(toGraphVertex[T])
       }
     }
@@ -206,7 +209,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
           (v1, v2)
         else (v2, v1)
 
-      graphMutation.addEdge(out.id,in.id,label,props,tx).map { e =>
+      graphMutation.addEdge(out.id,in.id,label,props)(txOrRaw(tx)).map { e =>
         Segment[V1,E,V2](v1,toGraphEdge[E](e),v2,direction)
       }
     }
@@ -223,15 +226,15 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
           (v1, v2)
         else (v2, v1)
 
-      graphMutation.addEdgeUnique(out.id,in.id,label,props,tx).map { e =>
+      graphMutation.addEdgeUnique(out.id,in.id,label,props)(txOrRaw(tx)).map { e =>
         Segment[V1,E,V2](v1,toGraphEdge[E](e),v2,direction)
       }
     }
     /**
      * @inheritdoc
      */
-    def get[T : VertexHelper](vertexId : idType) : Future[GraphVertex[T]] = transaction { tx =>
-      graphQuery.get(vertexId,tx).map { item =>
+    def get[T : VertexHelper](vertexId : idType) : Future[GraphVertex[T]] = {
+      graphQuery.get(vertexId).map { item =>
         toGraphVertex[T](item)
       }
     }
@@ -239,38 +242,38 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def getEdge[T : EdgeHelper](edgeId : idType) : Future[GraphEdge[T]] = transaction { tx =>
-      graphQuery.getEdge(edgeId,tx).map { item =>
+    def getEdge[T : EdgeHelper](edgeId : idType) : Future[GraphEdge[T]] = {
+      graphQuery.getEdge(edgeId).map { item =>
         toGraphEdge[T](item)
       }
     }
     /**
      * @inheritdoc
      */
-    def getByKey[T : VertexHelper](key : String, value : Any) : Future[GraphVertex[T]] = transaction { tx =>
-      graphQuery.getByKey(key,value,tx).map(toGraphVertex[T])
+    def getByKey[T : VertexHelper](key : String, value : Any) : Future[GraphVertex[T]] = {
+      graphQuery.getByKey(key,value).map(toGraphVertex[T])
     }
 
     /**
      * @inheritdoc
      */
-    def getSegment[O : VertexHelper, E : EdgeHelper, I : VertexHelper](edgeId : idType) : Future[Segment[O,E,I]] = transaction { tx =>
-      graphQuery.getSegment(edgeId,tx).map(toGraphSegment[O,E,I])
+    def getSegment[O : VertexHelper, E : EdgeHelper, I : VertexHelper](edgeId : idType) : Future[Segment[O,E,I]] = {
+      graphQuery.getSegment(edgeId).map(toGraphSegment[O,E,I])
     }
 
     /**
      * @inheritdoc
      */
-    def getSegmentFromVertices[O : VertexHelper, E : EdgeHelper, I : VertexHelper](v1 : idType, v2 : idType, label : String ) : Future[Option[Segment[O,E,I]]] = transaction { tx =>
-      graphQuery.getSegmentFromVertices(v1,v2,label,tx).map(_.map(toGraphSegment[O,E,I]))
+    def getSegmentFromVertices[O : VertexHelper, E : EdgeHelper, I : VertexHelper](v1 : idType, v2 : idType, label : String ) : Future[Option[Segment[O,E,I]]] = {
+      graphQuery.getSegmentFromVertices(v1,v2,label).map(_.map(toGraphSegment[O,E,I]))
     }
     /**
      * @inheritdoc
      */
-    def getEdges[E : EdgeHelper,V : VertexHelper](vertexId : idType, direction : Direction) : Future[Seq[EdgeTuple[E,V]]] = transaction { tx =>
+    def getEdges[E : EdgeHelper,V : VertexHelper](vertexId : idType, direction : Direction) : Future[Seq[EdgeTuple[E,V]]] = {
       val label = implicitly[EdgeHelper[E]].label
 
-      graphQuery.getEdges(vertexId,direction,label,tx).map{ rawEdgeTuples =>
+      graphQuery.getEdges(vertexId,direction,label).map{ rawEdgeTuples =>
         rawEdgeTuples.map(rawEdgeTuple[E,V])
       }
     }
@@ -280,8 +283,9 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     def update[T : VertexHelper](v : GraphVertex[T] ) : Future[GraphVertex[T]] = transaction { tx =>
       val props = implicitly[VertexHelper[T]].toMap(v.obj)
       val allProps = props ++ Map("type" -> v.objType,"class" -> v.objClass)
-      graphQuery.validateUpdate(v,tx).flatMap { x=>
-        graphMutation.updateVertex(v.id,allProps,tx)
+
+      graphQuery.validateUpdate(v)(txOrRaw(tx),implicitly[VertexHelper[T]]).flatMap { x=>
+        graphMutation.updateVertex(v.id,allProps)(txOrRaw(tx))
           .map(toGraphVertex[T])
       }
     }
@@ -291,7 +295,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
      */
     def update[T : EdgeHelper](v : GraphEdge[T] ) : Future[GraphEdge[T]] = transaction { tx =>
       val props = implicitly[EdgeHelper[T]].toMap(v.obj)
-      graphMutation.updateEdge(v.id,props,tx)
+      graphMutation.updateEdge(v.id,props)(txOrRaw(tx))
         .map(toGraphEdge[T])
     }
 
@@ -299,48 +303,47 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
      * @inheritdoc
      */
     def updateProperty[T : VertexHelper](v : GraphVertex[T], propName : String, newValue : Any ) : Future[GraphVertex[T]] = transaction { tx =>
-      graphMutation.updateVertexProperty(v.id,propName,newValue,tx)
-        .flatMap(x => graphQuery.get(v.id,tx).map(toGraphVertex[T]))
+      graphMutation.updateVertexProperty(v.id,propName,newValue)(txOrRaw(tx))
+        .flatMap(x => graphQuery.get(v.id)(txOrRaw(tx)).map(toGraphVertex[T]))
     }
 
     /**
      * @inheritdoc
      */
     def updateProperty[T : EdgeHelper](e : GraphEdge[T], propName : String, newValue : Any ) : Future[GraphEdge[T]] = transaction { tx =>
-      graphMutation.updateEdgeProperty(e.id,propName,newValue,tx)
-        .flatMap(x => graphQuery.getEdge(e.id,tx).map(toGraphEdge[T]))
+      graphMutation.updateEdgeProperty(e.id,propName,newValue)(txOrRaw(tx))
+        .flatMap(x => graphQuery.getEdge(e.id)(txOrRaw(tx)).map(toGraphEdge[T]))
     }
 
     /**
      * @inheritdoc
      */
     def delete[T : VertexHelper](vertex : GraphVertex[T]) : Future[String] = transaction { tx =>
-      graphMutation.deleteVertex(vertex.id,tx)
+      graphMutation.deleteVertex(vertex.id)(txOrRaw(tx))
     }
 
     /**
      * @inheritdoc
      */
     def delete[E : EdgeHelper](edge : GraphEdge[E]) : Future[String] = transaction { tx =>
-      graphMutation.deleteEdge(edge.id,tx)
+      graphMutation.deleteEdge(edge.id)(txOrRaw(tx))
     }
 
     /**
      * @inheritdoc
      */
     def validate[T : VertexHelper](v : T) : Future[T] = transaction { tx =>
-      graphQuery.validate(v,tx)
+      validate(v,txOrRaw(tx))
     }
-
-    def validate[T : VertexHelper](v : T, tx : Option[TransactionalGraph]) : Future[(T,Option[TransactionalGraph])] = {
-      graphQuery.validate(v,tx)
-        .map((_, tx))
+    def validate[T : VertexHelper](v : T, graph : Graph) : Future[T] = {
+      graphQuery.validate(v)(graph,implicitly[VertexHelper[T]])
     }
 
     /**
      * @inheritdoc
      */
-    def query[T : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[GraphVertex[T]]] = transaction { tx =>
+    /*
+    def query[T : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[GraphVertex[T]]] = {
       val query = filter
         .as("vertices") // this is the list of vertices
         .propertyMap
@@ -348,20 +351,49 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
         .back("vertices")
         .map(_.asInstanceOf[Vertex])
 
-      graphQuery.query(query,tx).map { results =>
+      graphQuery.query(query).map { results =>
         results.map { raw =>
           toGraphVertex[T](raw)
         }
       }
     }
+    */
+    def queryV[T : VertexHelper](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[GraphVertex[T]]] = {
+      graphQuery.queryV(vertexId)(pipe).map(_.map(toGraphVertex[T]))
+    }
+    def queryV[T : VertexHelper](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]): Future[Seq[GraphVertex[T]]] = {
+      graphQuery.queryV(key,value)(pipe).map(_.map(toGraphVertex[T]))
+    }
+    def queryE[E : EdgeHelper](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge]) : Future[Seq[GraphEdge[E]]] = {
+      graphQuery.queryE(edgeId)(pipe).map(_.map(toGraphEdge[E]))
+    }
+    def queryE[E: EdgeHelper](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge]): Future[Seq[GraphEdge[E]]] = {
+      graphQuery.queryE(key,value)(pipe).map(_.map(toGraphEdge[E]))
+    }
+
+    def genericQueryV[E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E]) : Future[Seq[E]] = graphQuery.genericQueryV(vertexId)(pipe)
+    def genericQueryV[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E]) : Future[Seq[E]] = graphQuery.genericQueryV(key,value)(pipe)
+    def genericQueryE[E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E]) : Future[Seq[E]] = graphQuery.genericQueryE(edgeId)(pipe)
+    def genericQueryE[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E]) : Future[Seq[E]] = graphQuery.genericQueryE(key,value)(pipe)
+
+    /**
+     * Very similar to query, except the end pipeline expects only a single object and will throw an exception otherwise
+     * @param pipe - the pipeline used to select the object
+     */
+    def select[T : VertexHelper](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[GraphVertex[T]] = {
+      graphQuery.select(vertexId)(pipe).map(toGraphVertex[T])
+    }
+    def select[T : VertexHelper](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[GraphVertex[T]] = {
+      graphQuery.select(key,value)(pipe).map(toGraphVertex[T])
+    }
 
     /**
      * @inheritdoc
      */
-    def querySegments[V1 : VertexHelper, E : EdgeHelper, V2 : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex], direction : Direction) : Future[Seq[Segment[V1,E,V2]]] = transaction { tx =>
+    def querySegments[V1 : VertexHelper, E : EdgeHelper, V2 : VertexHelper](direction : Direction, id : idType)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[Segment[V1,E,V2]]] = {
       val edgeLabel = implicitly[EdgeHelper[E]].label
 
-      graphQuery.querySegments(filter,direction,edgeLabel,tx).map { results =>
+      graphQuery.querySegments(direction,edgeLabel,id)(filter).map { results =>
         results.map { raw =>
           toGraphSegment[V1,E,V2](raw)
         }
@@ -371,19 +403,19 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def genericQuery[S,E](pipe : GremlinScalaPipeline[S,E]) : Future[List[E]] = transaction { tx =>
-      graphQuery.genericVertexQuery(pipe,tx)
-    }
+    def querySegments[V1 : VertexHelper, E : EdgeHelper, V2 : VertexHelper](direction : Direction,key : String, value : Any)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex]) : Future[Seq[Segment[V1,E,V2]]] = {
+      val edgeLabel = implicitly[EdgeHelper[E]].label
 
-    /**
-     * @inheritdoc
-     */
-    def genericEdgeQuery[S,E](pipe : GremlinScalaPipeline[S,E]) : Future[List[E]] = transaction { tx =>
-      graphQuery.genericEdgeQuery(pipe,tx)
+      graphQuery.querySegments(direction,edgeLabel,key, value)(filter).map { results =>
+        results.map { raw =>
+          toGraphSegment[V1,E,V2](raw)
+        }
+      }
     }
     /**
      * @inheritdoc
      */
+    /*
     def select[T : VertexHelper](filter: GremlinScalaPipeline[Vertex,Vertex]) : Future[GraphVertex[T]] = {
       query(filter).map( results =>
         if(results.size == 1) results.head
@@ -391,11 +423,12 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
         else throw new UnexpectedResultsException("expected 1 result, but found "+results.size)
       )
     }
+    */
 
     /**
      * @inheritdoc
      */
-    def shutdown() : Unit = graphSystem.shutdown()
+    def shutdown() : Unit = graphSystem.shutdown
 
     def loadJson(is : InputStream) = {
       graphSystem.loadJson(is)

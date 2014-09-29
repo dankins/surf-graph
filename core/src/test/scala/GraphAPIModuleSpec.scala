@@ -73,15 +73,6 @@ object GraphAPIModuleSpec extends Specification with NoTimeConversions {
     }
   }
 
-  trait TestLongIdsModule {
-    this: GraphModuleWithLongIds =>
-
-    trait TestFoo {
-      import objects._
-      def get(id : Long) : Future[GraphVertex[Sample]] = graph.get[Sample](id)
-    }
-  }
-
   trait SampleBPersistenceModule {
     this: GraphModule =>
     val component = SampleBPersistence

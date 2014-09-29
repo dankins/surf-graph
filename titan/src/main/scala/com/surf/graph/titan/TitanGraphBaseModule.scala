@@ -17,11 +17,11 @@ trait TitanGraphBaseModule extends GraphBaseModuleImpl with GraphQueryExecutionC
   override val graphBase = new TitanGraphBase
 
   class TitanGraphBase extends GraphBaseImpl {
-    override def addE(out: Vertex, in: Vertex, label: String,tx : Option[TransactionalGraph] = None) = Future{
+    override def addE(out: Vertex, in: Vertex, label: String)(implicit graph : Graph) = Future{
 
       val outTitan : TitanVertex = out.asInstanceOf[TitanVertex]
       val inTitan : TitanVertex = in.asInstanceOf[TitanVertex]
-      transactionOrBase(tx).addEdge(null,outTitan, inTitan, label)
+      graph.addEdge(null,outTitan, inTitan, label)
     }
 
   }

@@ -14,8 +14,6 @@ trait GraphModule extends GraphAPIModule with IdType
   */
 }
 
-trait GraphModuleWithLongIds extends GraphModule with LongGraphIds
-
 trait GraphModuleImpl extends GraphModule
   with GraphAPIModuleImpl
   with GraphBaseModuleImpl

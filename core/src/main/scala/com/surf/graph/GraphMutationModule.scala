@@ -1,6 +1,6 @@
 package com.surf.graph
 
-import com.tinkerpop.blueprints.{TransactionalGraph, Vertex}
+import com.tinkerpop.blueprints.Graph
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
 
 import scala.concurrent.Future
@@ -13,20 +13,20 @@ trait GraphMutationModule extends StandardExecutionContext {
     import objects._
     implicit val executionContext = standardExecutionContext
     // Create
-    def addVertex(objType : String, objClass : String, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex]
-    def addEdge(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any](),tx : Option[TransactionalGraph] = None  ) : Future[RawEdge]
-    def addEdgeUnique(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any](),tx : Option[TransactionalGraph] = None  ) : Future[RawEdge]
+    def addVertex(objType : String, objClass : String, props : Map[String,Any])( implicit graph : Graph) : Future[RawVertex]
+    def addEdge(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge]
+    def addEdgeUnique(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge]
     //def addEdge[O,E,I](out : GraphVertex[O], edge : E, in : GraphVertex[I] ) : Future[Segment[O,E,I]]
 
     // Update
-    def updateVertex(vertexId : idType, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex]
-    def updateEdge(edgeId : idType, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawEdge]
-    def updateVertexProperty(id : idType, fieldName : String, value : Any,tx : Option[TransactionalGraph] = None) : Future[String]
-    def updateEdgeProperty(id : idType, fieldName : String, value : Any,tx : Option[TransactionalGraph] = None) : Future[String]
+    def updateVertex(vertexId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawVertex]
+    def updateEdge(edgeId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawEdge]
+    def updateVertexProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String]
+    def updateEdgeProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String]
 
     // Delete
-    def deleteVertex(vertexId : idType,tx : Option[TransactionalGraph] = None) : Future[String]
-    def deleteEdge(edgeId : idType,tx : Option[TransactionalGraph] = None) : Future[String]
+    def deleteVertex(vertexId : idType)(implicit graph : Graph) : Future[String]
+    def deleteEdge(edgeId : idType)(implicit graph : Graph) : Future[String]
   }
 
 }
@@ -37,10 +37,10 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
 
   class GraphMutationImpl extends GraphMutation {
     import objects._
-    def addVertex(objectType : String, objectClass : String, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
+    def addVertex(objectType : String, objectClass : String, props : Map[String,Any])( implicit graph : Graph) : Future[RawVertex] = {
       val allProps = props ++ Map("type" -> objectType,"class" -> objectClass)
 
-      graphBase.addV(tx).map { v =>
+      graphBase.addV.map { v =>
         val modifiedProps = graphBase.prepareProps(allProps)
         modifiedProps.foreach{ kv =>
           v.setProperty(kv._1,kv._2)
@@ -48,60 +48,61 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
         RawVertex(v.getId.asInstanceOf[idType],modifiedProps)
       }
     }
-    def addEdge(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any](),tx : Option[TransactionalGraph] = None  ) : Future[RawEdge] = {
+    def addEdge(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge] = {
 
       for {
-        outV <- graphBase.v(outId,tx)
-        inV <- graphBase.v(inId,tx)
-        edge <- graphBase.addE(outV,inV,label,tx)
-        complete  <- graphBase.setProperties(edge,props,tx)
+        outV <- graphBase.v(outId)
+        inV <- graphBase.v(inId)
+        edge <- graphBase.addE(outV,inV,label)
+        complete  <- graphBase.setProperties(edge,props)
       } yield RawEdge(edge.getId.asInstanceOf[idType],label,props)
     }
 
-    def addEdgeUnique(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any](),tx : Option[TransactionalGraph] = None  ) : Future[RawEdge] = {
-      val query = new GremlinScalaPipeline[Vertex,Vertex]
+    def addEdgeUnique(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge] = {
+      val query = GremlinScalaPipeline(graph).V
         .has("id",outId)
         .out(label)
         .has("id",inId)
 
-      graphBase.genericVertexQuery(query,tx)
-      .flatMap { results =>
-        if(results.size == 0) addEdge(outId,inId,label,props)
+      graphBase.queryV(outId){
+        _.out(label).has("id",inId)
+      }.flatMap { results =>
+        if(results.size == 0) addEdge(outId,inId,label,props)(graph)
         else throw new GraphObjectUniqueConstraintException("Edge already exists")
       }
     }
-    def updateVertex(vertexId : idType, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
+    def updateVertex(vertexId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawVertex] = {
       // TODO this is very slow
       val modifiedProps = graphBase.prepareProps(props)
-      val futures = modifiedProps.map(pair => graphBase.setVertexProperty(vertexId,pair._1,pair._2,tx))
+      val futures = modifiedProps.map(pair => graphBase.setVertexProperty(vertexId,pair._1,pair._2))
 
       Future.sequence(futures).map(x => RawVertex(vertexId,modifiedProps))
     }
-    def updateEdge(edgeId : idType, props : Map[String,Any],tx : Option[TransactionalGraph] = None) : Future[RawEdge] = {
+    def updateEdge(edgeId : idType, props : Map[String,Any])(implicit graph : Graph) : Future[RawEdge] = {
       throw new Exception("not implemented")
     }
-    def updateVertexProperty(id : idType, fieldName : String, value : Any,tx : Option[TransactionalGraph] = None) : Future[String] = Future {
+    def updateVertexProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String] = Future {
       value match {
         case None => // don't set the property if None
-        case _ => graphBase.setVertexProperty(id, fieldName,value,tx)
+        case _ => graphBase.setVertexProperty(id, fieldName,value)
       }
 
       "Operation Successful"
     }
-    def updateEdgeProperty(id : idType, fieldName : String, value : Any,tx : Option[TransactionalGraph] = None) : Future[String] = Future {
+    def updateEdgeProperty(id : idType, fieldName : String, value : Any)(implicit graph : Graph) : Future[String] = Future {
       value match {
         case None => // don't set the property if None
-        case _ => graphBase.setEdgeProperty(id,fieldName,value,tx)
+        case _ => graphBase.setEdgeProperty(id,fieldName,value)
 
       }
       "Operation Successful"
     }
-    def deleteVertex(vertexId : idType,tx : Option[TransactionalGraph] = None) : Future[String] = Future {
-      graphBase.v(vertexId).map(graphBase.removeVertex(_,tx))
+    def deleteVertex(vertexId : idType)(implicit graph : Graph) : Future[String] = Future {
+      graphBase.v(vertexId).map(graphBase.removeVertex)
       "Operation Successful"
     }
-    def deleteEdge(edgeId : idType,tx : Option[TransactionalGraph] = None) : Future[String] = Future {
-      graphBase.e(edgeId).map(graphBase.removeEdge(_,tx))
+    def deleteEdge(edgeId : idType)(implicit graph : Graph) : Future[String] = Future {
+      graphBase.e(edgeId).map(graphBase.removeEdge)
       "Operation Successful"
     }
 

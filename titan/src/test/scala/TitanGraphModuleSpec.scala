@@ -13,7 +13,12 @@ import org.specs2._
 
 class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
 
-  trait TestContext extends Scope with TitanInMemoryGraphModule
+  trait TestContext extends Scope with TitanInMemoryGraphModule {
+    val mgmt = titanGraph.getManagementSystem
+    val fieldA = mgmt.makePropertyKey("Sample:fieldA").dataType(classOf[String]).make()
+    mgmt.buildIndex("fieldAIndex",classOf[Vertex]).addKey(fieldA).unique().buildCompositeIndex()
+    mgmt.commit()
+  }
 
   case class Sample(fieldA : String, fieldB : Long)
   object Sample {
@@ -45,9 +50,7 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
   }
 
 
-
-
-  "GraphBaseModuleSpec" should {
+  "TitanGraphModuleSpec" should {
 
 
     "allow creation of a vertex" in new TestContext{
@@ -65,24 +68,21 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
 
     "let you select from the graph" in new TestContext{
       val v1 = Await.result(graph.create(Sample("query-1",1)), 30 seconds)
-      val query = new GremlinScalaPipeline[Vertex, Vertex].has("id", v1.id)
 
-      val result = Await.result(graph.select[Sample](query) , 30 seconds)
+      val result = Await.result(graph.select[Sample](v1.id)(_.out("foo")) , 30 seconds)
 
       result.id must be equalTo v1.id
     }
 
     "allow updating a vertex property" in new TestContext{
-      val query = new GremlinScalaPipeline[Vertex, Vertex].has("Sample:fieldA", "update-3")
 
       val (result, theid) = Await.result(
         for {
           v1 <- graph.create(Sample("update-1",1))
           v2 <- graph.create(Sample("update-2",1))
           v1x <- graph.update(v1.copy(obj = v1.obj.copy(fieldA = "update-3")))
-          result <- graph.select[Sample](query)
+          result <- graph.getByKey[Sample]("Sample:fieldA", "update-3")
         } yield (result, v1.id)
-
 
         , 30 seconds)
 
@@ -90,7 +90,7 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
       result.obj.fieldA must be equalTo "update-3"
     }
     "allow edge queries"  in new TestContext {
-      def filter(id : String) = new GremlinScalaPipeline[Edge,Edge] .has("id",id)
+      //def filter(id : String) = graph.getEdge(id)
 
       val (result, v1) = Await.result(
         for {

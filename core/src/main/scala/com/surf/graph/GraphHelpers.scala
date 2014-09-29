@@ -2,14 +2,13 @@ package com.surf.graph
 
 import com.tinkerpop.gremlin.scala.{ScalaVertex, GremlinScalaPipeline}
 import scala.util.{Failure, Success, Try}
-import com.tinkerpop.blueprints.Vertex
+import com.tinkerpop.blueprints.{Graph, Vertex}
 
 trait VertexHelper[T] {
-  type GraphPipe = GremlinScalaPipeline[Vertex, Vertex]
   val objectType: String
   val uniqueFields: Seq[String]
 
-  def validate(obj: T, pipe: GraphPipe): Try[T]
+  def validate(obj: T, pipe: GremlinScalaPipeline[Vertex, Vertex]): Try[T]
   def toObject(props: Map[String, Any]): T
   def toMap(obj: T): Map[String, Any]
 
@@ -31,8 +30,9 @@ trait DefaultVertexHelper[T] extends VertexHelper[T] {
   //val fields : Map[String,Any]
 
   // TODO does this block? should it be a future?
-  def validate(obj: T, pipe : GraphPipe): Try[T] = {
-
+  def validate(obj: T, pipe : GremlinScalaPipeline[Vertex, Vertex]) : Try[T] = {
+    Success(obj)
+    /*
     pipe.has("type",objectType)
 
     def splits(fieldName : String) : GremlinScalaPipeline[Vertex,Any] = {
@@ -53,6 +53,7 @@ trait DefaultVertexHelper[T] extends VertexHelper[T] {
     } else {
       Success(obj)
     }
+    */
   }
 }
 
@@ -61,7 +62,7 @@ trait ReadOnlyVertexHelper[T] extends VertexHelper[T] {
   val uniqueFields = Seq()
 
   def setProperties(v: ScalaVertex, obj : T) = throw new Exception("read only")
-  def validate(obj: T, pipe : GraphPipe) = throw new Exception("read only")
+  def validate(obj: T, pipe : GremlinScalaPipeline[Vertex, Vertex]) = throw new Exception("read only")
   def toMap(obj : T) : Map[String,Any] = {
     throw new Exception("read only")
   }

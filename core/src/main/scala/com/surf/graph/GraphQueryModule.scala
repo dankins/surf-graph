@@ -1,10 +1,8 @@
 package com.surf.graph
 
-import com.tinkerpop.blueprints.{TransactionalGraph, Edge, Direction, Vertex}
-import com.tinkerpop.gremlin.Tokens.T
+import com.tinkerpop.blueprints._
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
-import com.tinkerpop.pipes.util.Pipeline
-import com.tinkerpop.pipes.util.structures.Row
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -12,7 +10,7 @@ import scala.util.{Failure, Success}
 /**
  * The main module used to query a Graph Database
  */
-trait GraphQueryModule extends StandardExecutionContext{
+trait GraphQueryModule extends StandardExecutionContext with LazyLogging {
   this: GraphBaseModule with IdType =>
 
   val graphQuery : GraphQuery
@@ -23,64 +21,61 @@ trait GraphQueryModule extends StandardExecutionContext{
     /**
      * getByKey with id = vertexId
      */
-    def get(vertexId : idType, tx : Option[TransactionalGraph] = None) : Future[RawVertex]
+    def get(vertexId : idType)(implicit graph : Graph) : Future[RawVertex]
     /**
      * Retrieves the object with the given vertexId from the Graph
      * It will marshall the object from a property map to an object of type T
      * Wraps the object in a GraphVertex containing graph metadata
      */
-    def getByKey(key : String, value : Any, tx : Option[TransactionalGraph] = None) : Future[RawVertex]
+    def getByKey(key : String, value : Any)(implicit graph : Graph) : Future[RawVertex]
 
 
     /**
      * TODO
-     * @param edgeId
+     * @param edgeId - the ID of the vertex to start from
      * @return
      */
-    def getEdge(edgeId : idType, tx : Option[TransactionalGraph] = None) : Future[RawEdge]
+    def getEdge(edgeId : idType)(implicit graph : Graph) : Future[RawEdge]
 
     /**
      * getEdges
-     * @param vertexId
-     * @param edgeDir
-     * @param label
+     * @param vertexId - the ID of the vertex to start from
+     * @param edgeDir - the direction of the edges to retrieve
+     * @param label - the label of the edge to filter on
      * @return
      */
-    def getEdges(vertexId : idType, edgeDir : Direction, label : String, tx : Option[TransactionalGraph] = None) : Future[Seq[RawEdgeTuple]]
+    def getEdges(vertexId : idType, edgeDir : Direction, label : String)(implicit graph : Graph) : Future[Seq[RawEdgeTuple]]
 
     /**
      * Checks if the given object is valid and able to be persisted to the graph without error.
      * @return - returns the object back if valid
      */
-    def validate[T : VertexHelper](v : T, tx : Option[TransactionalGraph] = None) : Future[T]
+    def validate[T](v : T)(implicit graph : Graph, vertexHelper : VertexHelper[T]) : Future[T]
 
-    /**
-     * Filters using a graph pipeline and returns the matching vertex objects
-     * @param filter - the pipeline used to filter the objects
-     */
-    def query(filter: GremlinScalaPipeline[Vertex,Vertex], tx : Option[TransactionalGraph] = None) : Future[Seq[RawVertex]]
-    //def query(query : GremlinScalaPipeline[Vertex,_], select : Seq[String]) : Future[GremlinScalaPipeline[Vertex,Row[_]]]
+    def query[S,E](pipe : GremlinScalaPipeline[Graph,Graph] => GremlinScalaPipeline[S,E])(implicit graph : Graph) : Future[Seq[E]]
 
-    /**
-     * TODO
-     */
-    def querySegments(filter: GremlinScalaPipeline[Vertex,Vertex], direction : Direction, edgeLabel : String, tx : Option[TransactionalGraph] = None) : Future[Seq[RawSegment]]
-
-    /**
-     * TODO
-     */
-    def genericVertexQuery[S,E](pipe : GremlinScalaPipeline[S,E], tx : Option[TransactionalGraph] = None) : Future[List[E]]
-
-    /**
-     * TODO
-     */
-    def genericEdgeQuery[S,E](pipe : GremlinScalaPipeline[S,E], tx : Option[TransactionalGraph] = None) : Future[List[E]]
-
+    def queryV[S,E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawVertex]]
+    def queryV[S,E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawVertex]]
+    def queryE[S,E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge])(implicit graph : Graph) : Future[Seq[RawEdge]]
+    def queryE[S,E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge])(implicit graph : Graph) : Future[Seq[RawEdge]]
+    def genericQueryV[E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]]
+    def genericQueryV[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]]
+    def genericQueryE[E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]]
+    def genericQueryE[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]]
     /**
      * Very similar to query, except the end pipeline expects only a single object and will throw an exception otherwise
-     * @param filter - the pipeline used to select the object
+     * @param pipe - the pipeline used to select the object
      */
-    def select(filter: GremlinScalaPipeline[Vertex,Vertex], tx : Option[TransactionalGraph] = None) : Future[RawVertex]
+    def select(vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[RawVertex]
+    def select(key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[RawVertex]
+    /**
+     * TODO
+     */
+    def querySegments(direction : Direction, edgeLabel : String, key : String, value : Any)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawSegment]]
+    def querySegments(direction : Direction, edgeLabel : String, vertexId : idType)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawSegment]]
+
+
+
 /*
     /**
      * Similar to the query method, however after the objects are selected it will then retrieve incident edges
@@ -97,7 +92,7 @@ trait GraphQueryModule extends StandardExecutionContext{
 
     //def getEdges(vertexId : String, edgeDir : Direction, label : String) : Future[Seq[RawEdgeTuple]]
 
-    def getSegment(edgeId : idType, tx : Option[TransactionalGraph] = None) : Future[RawSegment]
+    def getSegment(edgeId : idType)(implicit graph : Graph) : Future[RawSegment]
 
     /**
      * Retrieves an option with RawSegment that exists between two vertices
@@ -106,11 +101,11 @@ trait GraphQueryModule extends StandardExecutionContext{
      * @param label - the label of the edge between the two vertices
      * @return
      */
-    def getSegmentFromVertices(v1 : idType, v2 : idType, label : String, tx : Option[TransactionalGraph] = None ) : Future[Option[RawSegment]]
+    def getSegmentFromVertices(v1 : idType, v2 : idType, label : String)(implicit graph : Graph ) : Future[Option[RawSegment]]
 
 
     //def getComponents(base : GremlinScalaPipeline[Vertex,Vertex], components : Map[String,GremlinScalaPipeline[Vertex,Vertex]]) : Seq[(RawVertex,Map[String,Seq[(RawEdge,RawVertex)]])]
-    def validateUpdate[T : VertexHelper](vertex : GraphVertex[T], tx : Option[TransactionalGraph] = None) : Future[T]
+    def validateUpdate[T](vertex : GraphVertex[T])(implicit graph : Graph, vertexHelper : VertexHelper[T]) : Future[T]
 
 
   }
@@ -126,38 +121,47 @@ trait GraphQueryModuleImpl extends GraphQueryModule with StandardExecutionContex
     /**
      * @inheritdoc
      */
-    def get(vertexId : idType, tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
-      getByKey("id",vertexId,tx)
+    def get(vertexId : idType)(implicit graph : Graph) : Future[RawVertex] = {
+      graphBase.queryV(vertexId)(
+        _.as("vertex")
+        .propertyMap.as("properties")
+        .select("vertex","properties")
+        .map(graphBase.rowToRawVertex(_,"vertex","properties"))
+      ).map(onlyOne)
+    }
+
+    private def onlyOne(results : Seq[RawVertex]) : RawVertex = {
+      if(results.size.equals(0)) throw new ObjectNotFoundException(s"could not find object")
+      else if(results.size > 1) throw new UnexpectedResultsException(s"error retrieving object - found ${results.size} results when expecting 1")
+      else results.head
     }
 
     /**
      * @inheritdoc
      */
-    def getByKey(key : String, value : Any, tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
-      val pipe = new GremlinScalaPipeline[Vertex,Vertex]
-        .has(key,value)
-      query(pipe).map { result =>
-        if(result.size.equals(0)) throw new ObjectNotFoundException(s"could not find object with key $key and value ${value.toString}")
-        else if(result.size > 1) throw new UnexpectedResultsException(s"error retrieving object with key $key and value ${value.toString} - found ${result.size} results when expecting 1")
-        else result.head
-      }
+    def getByKey(key : String, value : Any)(implicit graph : Graph) : Future[RawVertex] = {
+      graphBase.queryV(key,value)(
+        _.as("vertex")
+        .propertyMap.as("properties")
+        .select("vertex","properties")
+        .map(graphBase.rowToRawVertex(_,"vertex","properties"))
+      ).map(onlyOne)
     }
 
     /**
      * @inheritdoc
      */
-    def getEdge(edgeId : idType, tx : Option[TransactionalGraph] = None) : Future[RawEdge] = {
-      val pipe = new GremlinScalaPipeline[Edge,Edge]
-        .has("id",edgeId)
-        .as("edge").propertyMap.as("edge-props")
+    def getEdge(edgeId : idType)(implicit graph : Graph) : Future[RawEdge] = {
+      val pipe = graphBase.queryE(edgeId){
+        _.as("edge").propertyMap.as("edge-props")
         .back("edge")
         .select("edge","edge-props")
         .map { row =>
           graphBase.rowToRawEdge(row, "edge", "edge-props")
         }
+      }
 
-
-      graphBase.genericEdgeQuery(pipe,tx).map { result =>
+      pipe.map { result =>
         if(result.size.equals(1)) result.head
         else if(result.size.equals(0)) throw new ObjectNotFoundException(s"could not find edge with id#$edgeId")
         else if(result.size > 1) throw new UnexpectedResultsException(s"error retrieving edge id#$edgeId - found ${result.size} results when expecting 1")
@@ -168,19 +172,19 @@ trait GraphQueryModuleImpl extends GraphQueryModule with StandardExecutionContex
     /**
      * @inheritdoc
      */
-    def getSegment(edgeId : idType, tx : Option[TransactionalGraph] = None) : Future[RawSegment] = {
-      val filter = new GremlinScalaPipeline[Edge,Edge]
-        .has("id",edgeId)
-        .as("edge").propertyMap.as("edge-props")
+    def getSegment(edgeId : idType)(implicit graph : Graph) : Future[RawSegment] = {
+      val segment = graphBase.queryE(edgeId) {
+        _.as("edge").propertyMap.as("edge-props")
         .back("edge")
         .inV.as("in").propertyMap.as("in-props")
         .back("edge")
         .outV.as("out").propertyMap.as("out-props")
         .back("edge")
-        .map(_.asInstanceOf[Edge])
+        .select("edge","edge-props","in","in-props","out","out-props")
+        .map(graphBase.rowToRawSegment(_))
+      }
 
-
-      graphBase.genericEdgeQuery(getSegmentQuery(filter),tx).map { result =>
+      segment.map { result =>
         result.head
       }.recover {
         case e : NoSuchElementException => throw new ObjectNotFoundException("could not find segment with id " + edgeId)
@@ -190,162 +194,107 @@ trait GraphQueryModuleImpl extends GraphQueryModule with StandardExecutionContex
     /**
      * @inheritdoc
      */
-    def getSegmentFromVertices(v1 : idType, v2 : idType, label : String, tx : Option[TransactionalGraph] = None ) : Future[Option[RawSegment]] = {
+    def getSegmentFromVertices(v1 : idType, v2 : idType, label : String)(implicit graph : Graph ) : Future[Option[RawSegment]] = {
 
-      val filter = new GremlinScalaPipeline[Vertex,Vertex]
-        .has("id",v1.toString).as("out").propertyMap.as("out-props").back("out")
-        .outE(label).as("edge").propertyMap.as("edge-props").back("edge")
-        .inV.has("id",v2.toString).as("in").propertyMap.as("in-props")
+      val segment = graphBase.queryV(v1) { pipe =>
+        pipe.as("out").propertyMap.as("out-props").back("out")
+          .outE(label).as("edge").propertyMap.as("edge-props").back("edge")
+          .inV.has("id",v2.toString).as("in").propertyMap.as("in-props")
+          .select("edge","edge-props","in","in-props","out","out-props")
+          .map(graphBase.rowToRawSegment(_))
+      }
 
-      graphBase.genericVertexQuery(getSegmentQuery(filter),tx).map { segments =>
+      segment.map { segments =>
         if(segments.size == 0) None
         else if (segments.size == 1) Some(segments.head)
         else throw new UnexpectedResultsException("Expected to find one segment, but found "+ segments.size)
       }
     }
 
-    def getSegmentQuery(filter : GremlinScalaPipeline[_,_]) : GremlinScalaPipeline[_,RawSegment] = {
-      filter.select("edge","edge-props","in","in-props","out","out-props")
-      .map { row =>
-        val out = graphBase.rowToRawVertex(row, "out", "out-props")
-        val edge = graphBase.rowToRawEdge(row,"edge","edge-props")
-        val in = graphBase.rowToRawVertex(row, "in", "in-props")
-
-        RawSegment(out,edge, in, Direction.OUT)
-      }
-    }
-
     /**
      * @inheritdoc
      */
-    def getEdges(vertexId : idType, edgeDir : Direction, label : String, tx : Option[TransactionalGraph] = None) : Future[Seq[RawEdgeTuple]] = {
-      val inPipe = new GremlinScalaPipeline[Vertex,Vertex]
-        .has("id",vertexId).as("base")
-        .inE(label)
-        .as("edge").propertyMap.as("edge-props")
-        .back("edge")
-        .outV.as("vertex")
-        .propertyMap.as("props")
-        .back("vertex")
+    def getEdges(vertexId : idType, edgeDir : Direction, label : String)(implicit graph : Graph) : Future[Seq[RawEdgeTuple]] = {
+      def inPipe(pipe : GremlinScalaPipeline[Vertex,Vertex]) = {
+        pipe.as("base")
+          .inE(label)
+          .as("edge").propertyMap.as("edge-props")
+          .back("edge")
+          .outV.as("vertex")
+          .propertyMap.as("props")
+      }
 
-      val outPipe = new GremlinScalaPipeline[Vertex,Vertex]
-        .has("id",vertexId).as("base")
-        .outE(label)
-        .as("edge").propertyMap.as("edge-props")
-        .back("edge")
-        .inV.as("vertex")
-        .propertyMap.as("props")
-        .back("vertex")
 
-      val pipe = if(edgeDir.equals(Direction.IN)) inPipe
-                 else outPipe
+      def outPipe(pipe : GremlinScalaPipeline[Vertex,Vertex]) = {
+        pipe.as("base")
+          .outE(label)
+          .as("edge").propertyMap.as("edge-props")
+          .back("edge")
+          .inV.as("vertex")
+          .propertyMap.as("props")
+      }
+
+      def dirPipe(pipe : GremlinScalaPipeline[Vertex,Vertex]) = {
+        if(edgeDir.equals(Direction.IN)) inPipe(pipe)
+        else outPipe(pipe)
+      }
       // TODO what about Direction.BOTH?
 
-      val finalPipe = pipe
-        .select("edge","edge-props","vertex","props")
-        .map { row =>
+      def finalPipe(pipe : GremlinScalaPipeline[Vertex,Vertex]) = {
+        dirPipe(pipe)
+          .select("edge","edge-props","vertex","props")
+          .map { row =>
           val edgeShell = graphBase.rowToRawEdge(row,"edge","edge-props")
           val vertexShell = graphBase.rowToRawVertex(row, "vertex", "props")
 
           RawEdgeTuple(edgeShell,vertexShell, edgeDir)
         }
-      graphBase.genericVertexQuery(finalPipe,tx)
-    }
-
-    /**
-     * @inheritdoc
-     */
-    def query(filter: GremlinScalaPipeline[Vertex,Vertex], tx : Option[TransactionalGraph]) : Future[Seq[RawVertex]] = {
-      val q = filter
-        .as("vertices")
-        .propertyMap.as("properties")
-        .back("vertices")
-        .map(_.asInstanceOf[Vertex])
-
-      query(q,Seq("vertices","properties"),tx)
-      .map { queryRow =>
-        queryRow.map(graphBase.rowToRawVertex(_,"vertices","properties"))
-          .toList()
       }
+
+      graphBase.queryV(vertexId)(finalPipe)
     }
 
-    def query(query : GremlinScalaPipeline[Vertex,Vertex], select : Seq[String], tx : Option[TransactionalGraph]) : Future[GremlinScalaPipeline[Vertex,Row[_]]] = {
-      graphBase.vertexQuery(query,tx)
-        .map(_.select(select : _*))
-    }
-
-    def queryEdges(query : GremlinScalaPipeline[Edge,Edge], select : Seq[String], tx : Option[TransactionalGraph]) : Future[GremlinScalaPipeline[Edge,Row[_]]] = {
-      graphBase.edgeQuery(query,tx)
-        .map(_.select(select : _*))
-    }
-
-    def genericVertexQuery[S,E](pipe : GremlinScalaPipeline[S,E], tx : Option[TransactionalGraph] = None) : Future[List[E]] = {
-      graphBase.genericVertexQuery(pipe,tx)
-    }
-
-    def genericEdgeQuery[S,E](pipe : GremlinScalaPipeline[S,E], tx : Option[TransactionalGraph] = None) : Future[List[E]] = {
-      graphBase.genericEdgeQuery(pipe,tx)
-    }
     /**
      * @inheritdoc
      */
-    def querySegments(filter: GremlinScalaPipeline[Vertex,Vertex], direction : Direction, edgeLabel : String, tx : Option[TransactionalGraph] = None) : Future[Seq[RawSegment]] = {
+    def querySegmentsPartial(direction : Direction, edgeLabel : String)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])
+      : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,RawSegment] =
+    {
 
-      val base = filter.as("v1").propertyMap.as("v1-props").back("v1")
-        .asInstanceOf[GremlinScalaPipeline[Vertex,Vertex]]
-      def out : GremlinScalaPipeline[Vertex,Vertex] = {
-          new GremlinScalaPipeline[Vertex,Vertex]
+      //val base = filter.as("v1").propertyMap.as("v1-props").back("v1")
+
+      def out(pipe : GremlinScalaPipeline[Vertex,Any]) : GremlinScalaPipeline[Vertex,Any] = {
+          pipe
           .outE(edgeLabel).as("edges")
           .propertyMap.as("edges-props")
           .back("edges")
           .inV.as("v2")
           .propertyMap.as("v2-props")
           .back("v1")
-          .map(_.asInstanceOf[Vertex])
       }
 
-      def in : GremlinScalaPipeline[Vertex,Vertex] = {
-        new GremlinScalaPipeline[Vertex,Vertex]
+      def in(pipe : GremlinScalaPipeline[Vertex,Any]) : GremlinScalaPipeline[Vertex,Any] = {
+        pipe
           .inE(edgeLabel).as("edges")
           .propertyMap.as("edges-props")
           .back("edges")
           .outV.as("v2")
           .propertyMap.as("v2-props")
           .back("v1")
-          .map(_.asInstanceOf[Vertex])
       }
 
       def both = {
         throw new UnsupportedOperationException
-
-        /*
-        base.or(
-          new GremlinScalaPipeline[Vertex,Vertex]
-            .inE(edgeLabel).as("edges")
-            .propertyMap.as("edges-props")
-            .back("edges")
-            .outV.as("v2")
-            .propertyMap.as("v2-props")
-            .map(x => Direction.IN).as("direction")
-            .back("v2"),
-          new GremlinScalaPipeline[Vertex,Vertex]
-            .outE(edgeLabel).as("edges")
-            .propertyMap.as("edges-props")
-            .back("edges")
-            .inV.as("v2")
-            .propertyMap.as("v2-props")
-            .map(x => Direction.OUT).as("direction")
-            .back("v2")
-        )*/
       }
 
-      val q = if(direction.equals(Direction.OUT)) base.addPipe(out)
-              else if(direction.equals(Direction.IN)) base.addPipe(in)
-              else both
+      { pipe : GremlinScalaPipeline[Vertex,Vertex] =>
+        val base = filter(pipe).as("v1").propertyMap.as("v1-props").back("v1")
 
-      query(q,Seq("v1","v1-props","edges","edges-props","v2","v2-props","direction"),tx)
-      .map{ results =>
-        results.map{row =>
+        val q = if(direction.equals(Direction.OUT)) out(base)
+                else if(direction.equals(Direction.IN)) in(base)
+                else both
+        q.select("v1","v1-props","edges","edges-props","v2","v2-props","direction")
+        .map{ row =>
           val v1 = graphBase.rowToRawVertex(row,"v1","v1-props")
           val edge = graphBase.rowToRawEdge(row,"edges","edges-props")
           val v2 = graphBase.rowToRawVertex(row,"v2","v2-props")
@@ -355,44 +304,68 @@ trait GraphQueryModuleImpl extends GraphQueryModule with StandardExecutionContex
 
           RawSegment(v1,edge,v2,dir)
         }
-        .toList()
       }
-
     }
+    def querySegments(direction : Direction, edgeLabel : String, vertexId : idType)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawSegment]] = {
+      graphBase.queryV(vertexId)(querySegmentsPartial(direction,edgeLabel)(filter))
+    }
+    def querySegments(direction : Direction, edgeLabel : String, key : String, value : Any)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawSegment]] = {
+      graphBase.queryV(key,value)(querySegmentsPartial(direction,edgeLabel)(filter))
+    }
+
+    def query[S,E](pipe : GremlinScalaPipeline[Graph,Graph] => GremlinScalaPipeline[S,E])(implicit graph : Graph) : Future[Seq[E]] = {
+      logger.warn("This query is risky - large graphs may not use indexes")
+      graphBase.query(pipe)
+    }
+
+    def queryV[S,E](vertexId : idType)(filter : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawVertex]] = {
+      graphBase.queryV(vertexId){ pipe =>
+        filter(pipe).as("vertices").propertyMap.as("vert-props").select("vertices","vert-props").map(graphBase.rowToRawVertex(_,"vertices","vert-props"))
+      }
+    }
+    def queryV[S,E](key : String, value : Any)(filter : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[Seq[RawVertex]] = {
+      graphBase.queryV(key,value){ pipe =>
+        filter(pipe).as("vertices").propertyMap.as("vert-props").select("vertices","vert-props").map(graphBase.rowToRawVertex(_,"vertices","vert-props"))
+      }
+    }
+    def queryE[S,E](edgeId : idType)(filter : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge])(implicit graph : Graph) : Future[Seq[RawEdge]] = {
+      graphBase.queryE(edgeId){ pipe =>
+        filter(pipe).as("edge").propertyMap.as("edge-props").select("edge","edge-props").map(graphBase.rowToRawEdge(_,"edge","edge-props"))
+      }
+    }
+    def queryE[S,E](key : String, value : Any)(filter : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,Edge])(implicit graph : Graph) : Future[Seq[RawEdge]] = {
+      graphBase.queryE(key,value){ pipe =>
+        filter(pipe).as("edge").propertyMap.as("edge-props").select("edge","edge-props").map(graphBase.rowToRawEdge(_,"edge","edge-props"))
+      }
+    }
+    def genericQueryV[E](vertexId : idType)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]] = graphBase.queryV(vertexId)(pipe)
+    def genericQueryV[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,E])(implicit graph : Graph) : Future[Seq[E]] = graphBase.queryV(key,value)(pipe)
+    def genericQueryE[E](edgeId : idType)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]] = graphBase.queryE(edgeId)(pipe)
+    def genericQueryE[E](key : String, value : Any)(pipe : GremlinScalaPipeline[Edge,Edge] => GremlinScalaPipeline[Edge,E])(implicit graph : Graph) : Future[Seq[E]] = graphBase.queryE(key,value)(pipe)
 
     /**
      * @inheritdoc
      */
-    def select(filter: GremlinScalaPipeline[Vertex,Vertex], tx : Option[TransactionalGraph] = None) : Future[RawVertex] = {
-      query(filter,tx).map { result =>
-        if(result.size.equals(0)) throw new ObjectNotFoundException(s"could not find object from query")
-        else if(result.size > 1) throw new UnexpectedResultsException(s"error retrieving object with query - found ${result.size} results when expecting 1")
-        else result.head
-      }
+    def select(id : idType)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[RawVertex] = {
+      queryV(id)(filter).map(onlyOne)
     }
 
-    def validate[T : VertexHelper](obj : T, tx : Option[TransactionalGraph] = None) : Future[T] = {
-      val base = new GremlinScalaPipeline[Vertex,Vertex]
-        .has("id",T.neq,"foo")
-      graphBase.vertexQuery(base,tx).flatMap { pipe =>
-        implicitly[VertexHelper[T]].validate(obj, pipe) match {
-          case Success(x) => Future.successful(x)
-          case Failure(e) => Future.failed(e)
-        }
-      }
+    def select(key : String, value : Any)(filter: GremlinScalaPipeline[Vertex,Vertex] => GremlinScalaPipeline[Vertex,Vertex])(implicit graph : Graph) : Future[RawVertex] = {
+      queryV(key,value)(filter).map(onlyOne)
     }
 
-    def validateUpdate[T : VertexHelper](vertex : GraphVertex[T], tx : Option[TransactionalGraph] = None) : Future[T] = {
-      val base = new GremlinScalaPipeline[Vertex,Vertex]
-           .has("id",T.neq,vertex.id)
-      graphBase.vertexQuery(base,tx).flatMap { pipe =>
-        implicitly[VertexHelper[T]].validate(vertex.obj, pipe) match {
-          case Success(x) => Future.successful(x)
-          case Failure(e) => Future.failed(e)
-        }
-      }
+    def validate[T](obj : T)(implicit graph : Graph, vertexHelper : VertexHelper[T]) : Future[T] = Future {
+      implicitly[VertexHelper[T]].validate(obj,GremlinScalaPipeline(graph).V)
+    }.flatMap {
+        case Success(x) => Future.successful(x)
+        case Failure(e) => Future.failed(e)
     }
 
-
+    def validateUpdate[T](vertex : GraphVertex[T])(implicit graph : Graph, vertexHelper : VertexHelper[T]) : Future[T] = Future {
+      implicitly[VertexHelper[T]].validate(vertex.obj,GremlinScalaPipeline(graph).V)
+    }.flatMap {
+      case Success(x) => Future.successful(x)
+      case Failure(e) => Future.failed(e)
+    }
   }
 }

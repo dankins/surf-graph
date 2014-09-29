@@ -2,15 +2,14 @@ package com.surf.graph
 
 import java.io.InputStream
 
-/**
- * Created by dan on 7/9/14.
- */
+import com.tinkerpop.blueprints.Graph
+
 trait GraphSystemModule {
   val graphSystem : GraphSystem
 
   trait GraphSystem {
-    def shutdown() : Unit
-    def loadJson(is : InputStream)
+    def shutdown(implicit graph : Graph) : Unit
+    def loadJson(is : InputStream)(implicit graph : Graph) : Unit
   }
 }
 
@@ -19,7 +18,7 @@ trait GraphSystemModuleImpl extends GraphSystemModule{
   val graphSystem = new GraphSystemImpl
 
   class GraphSystemImpl extends GraphSystem {
-    def shutdown() = graphBase.shutdown()
-    def loadJson(is : InputStream) = graphBase.loadJson(is)
+    def shutdown(implicit graph : Graph) = graphBase.shutdown
+    def loadJson(is : InputStream)(implicit graph : Graph) = graphBase.loadJson(is)
   }
 }
