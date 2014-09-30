@@ -13,7 +13,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 trait TitanRawGraph extends RawGraph with TitanGraphIds with LazyLogging
 {
-  val batch = false
   val conf : BaseConfiguration
 
   lazy val titanGraph = TitanFactory.open(conf)

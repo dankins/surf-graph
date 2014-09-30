@@ -75,7 +75,7 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
     "let you select from the graph" in new TestContext{
       val v1 = Await.result(graph.create(Sample("query-1",1)), 30 seconds)
 
-      val result = Await.result(graph.select[Sample](v1.id)(_.out("foo")) , 30 seconds)
+      val result = Await.result(graph.select[Sample](v1.id)(_.as("foo")) , 30 seconds)
 
       result.id must be equalTo v1.id
     }
