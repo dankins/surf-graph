@@ -78,6 +78,7 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
       val result = Await.result(graph.select[Sample](v1.id)(_.as("foo")) , 30 seconds)
 
       result.id must be equalTo v1.id
+
     }
 
     "allow updating a vertex property" in new TestContext{

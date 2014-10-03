@@ -26,7 +26,7 @@ trait TitanCassandraGraphModule extends TitanGraphModule {
   val storageHostname : String
   val storagePort = "9160"
   val indexHostname : String
-  val indexPort = 9200
+  val indexPort = 9300
 
   lazy val conf = new BaseConfiguration() {
     setProperty("storage.backend", "cassandra")
@@ -35,9 +35,9 @@ trait TitanCassandraGraphModule extends TitanGraphModule {
     setProperty("storage.batch-loading", batch)
     setProperty("query.fast-property",fastProperty)
     setProperty("query.force-index",forceIndex)
-    setProperty("storage.index.search.backend",indexBackend)
-    setProperty("storage.index.search.hostname",indexHostname)
-    setProperty("storage.index.search.hostname",indexPort)
+    setProperty("index.search.backend",indexBackend)
+    setProperty("index.search.hostname",indexHostname)
+    setProperty("index.search.port",indexPort)
   }
 }
 
