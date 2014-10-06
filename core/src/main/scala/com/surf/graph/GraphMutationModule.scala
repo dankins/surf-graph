@@ -13,7 +13,7 @@ trait GraphMutationModule extends StandardExecutionContext {
     import objects._
     implicit val executionContext = standardExecutionContext
     // Create
-    def addVertex(objType : String, objClass : String, props : Map[String,Any])( implicit graph : Graph) : Future[RawVertex]
+    def addVertex(objType : String, props : Map[String,Any])( implicit graph : Graph) : Future[RawVertex]
     def addEdge(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge]
     def addEdgeUnique(outId : idType, inId : idType, label : String, props : Map[String,Any] = Map[String,Any]())(implicit graph : Graph) : Future[RawEdge]
     //def addEdge[O,E,I](out : GraphVertex[O], edge : E, in : GraphVertex[I] ) : Future[Segment[O,E,I]]
@@ -37,8 +37,8 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
 
   class GraphMutationImpl extends GraphMutation {
     import objects._
-    def addVertex(objectType : String, objectClass : String, props : Map[String,Any])( implicit graph : Graph) : Future[RawVertex] = {
-      val allProps = props ++ Map("type" -> objectType,"class" -> objectClass)
+    def addVertex(objectType : String, props : Map[String,Any])( implicit graph : Graph) : Future[RawVertex] = {
+      val allProps = props ++ Map("type" -> objectType)
 
       graphBase.addV.map { v =>
         val modifiedProps = graphBase.prepareProps(allProps)

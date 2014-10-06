@@ -25,12 +25,11 @@ class GraphMutationModuleSpec extends Specification with NoTimeConversions {
 
   "GraphMutationModule" should {
     "allow creation of a vertex" in new TestContext {
-      val v = Await.result(graphMutation.addVertex("test","test",Map("foo"->"bar")), 30 seconds)
+      val v = Await.result(graphMutation.addVertex("test",Map("foo"->"bar")), 30 seconds)
       val result = Await.result(graphBase.v(v.id), 30 seconds)
 
 
       result.getProperty[String]("foo") must be equalTo "bar"
-      result.getProperty[String]("class") must be equalTo "test"
       result.getProperty[String]("type") must be equalTo "test"
     }
 

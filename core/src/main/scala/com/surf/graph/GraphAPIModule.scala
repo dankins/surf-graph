@@ -189,13 +189,12 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
      */
     def create[T: VertexHelper](obj: T) : Future[GraphVertex[T]] = transaction { tx =>
       val objType = implicitly[VertexHelper[T]].objectType
-      val objClass = obj.getClass.getSimpleName
       val props = implicitly[VertexHelper[T]].toMap(obj)
 
       logger.debug(s"Creating vertex of type $objType")
       // add the vertex to the graph and return the GraphVertex
       validate(obj,txOrRaw(tx)).flatMap { validated =>
-        graphMutation.addVertex(objType, objClass, props)(txOrRaw(tx))
+        graphMutation.addVertex(objType, props)(txOrRaw(tx))
           .map(toGraphVertex[T])
       }
     }
@@ -284,7 +283,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
      */
     def update[T : VertexHelper](v : GraphVertex[T] ) : Future[GraphVertex[T]] = transaction { tx =>
       val props = implicitly[VertexHelper[T]].toMap(v.obj)
-      val allProps = props ++ Map("type" -> v.objType,"class" -> v.objClass)
+      val allProps = props ++ Map("type" -> v.objType)
 
       graphQuery.validateUpdate(v)(txOrRaw(tx),implicitly[VertexHelper[T]]).flatMap { x=>
         graphMutation.updateVertex(v.id,allProps)(txOrRaw(tx))

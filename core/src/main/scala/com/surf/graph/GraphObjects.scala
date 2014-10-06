@@ -14,7 +14,7 @@ trait GraphObjects {
     implicit def serializeEdgeId(id : edgeIdType) : serializedEdgeIdType
     implicit def deserializeEdgeId(id : serializedEdgeIdType) : edgeIdType
 
-    case class GraphVertex[+T] (id : idType, objType : String, objClass : String, obj : T)
+    case class GraphVertex[+T] (id : idType, objType : String, obj : T)
     case class GraphEdge[+T] (id : edgeIdType, label : String, obj : T)
 
     case class EdgeTuple[E,V](edge : GraphEdge[E], vertex : GraphVertex[V], direction : Direction)
@@ -37,12 +37,10 @@ trait GraphObjects {
     def toGraphVertex[T : VertexHelper](v : RawVertex) : GraphVertex[T] = {
       val obj = implicitly[VertexHelper[T]].toObject(v.props)
       val objectType = v.props.get("type").get.toString
-      val objClass = v.props.get("class").get.toString
 
       GraphVertex(
         id = v.id,
         objType = objectType,
-        objClass = objClass,
         obj = obj
       )
     }
