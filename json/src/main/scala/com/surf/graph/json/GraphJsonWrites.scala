@@ -42,7 +42,7 @@ trait GraphJsonWrites {
   implicit def writesVertex[E](implicit objWrites: Writes[E]) = new Writes[GraphVertex[E]]{
     def writes(value: GraphVertex[E]): JsValue = {
       val serializedId : serializedIdType = value.id
-      Json.obj("id"->serializedId,"type"->value.objType,"class"->value.objClass,"object"->value.obj)
+      Json.obj("id"->serializedId,"type"->value.objType,"object"->value.obj)
     }
   }
 
