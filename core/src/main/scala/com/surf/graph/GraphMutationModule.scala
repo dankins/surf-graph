@@ -97,13 +97,11 @@ trait GraphMutationModuleImpl extends GraphMutationModule with StandardExecution
       }
       "Operation Successful"
     }
-    def deleteVertex(vertexId : idType)(implicit graph : Graph) : Future[String] = Future {
-      graphBase.v(vertexId).map(graphBase.removeVertex)
-      "Operation Successful"
+    def deleteVertex(vertexId : idType)(implicit graph : Graph) : Future[String] = {
+      graphBase.v(vertexId).flatMap(graphBase.removeVertex).map(x => "Operation Successful")
     }
-    def deleteEdge(edgeId : edgeIdType)(implicit graph : Graph) : Future[String] = Future {
-      graphBase.e(edgeId).map(graphBase.removeEdge)
-      "Operation Successful"
+    def deleteEdge(edgeId : edgeIdType)(implicit graph : Graph) : Future[String] = {
+      graphBase.e(edgeId).flatMap(graphBase.removeEdge).map(x => "Operation Successful")
     }
 
   }

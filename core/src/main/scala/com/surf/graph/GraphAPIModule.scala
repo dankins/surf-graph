@@ -187,7 +187,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def create[T: VertexHelper](obj: T) : Future[GraphVertex[T]] = transaction { tx =>
+    def create[T: VertexHelper](obj: T) : Future[GraphVertex[T]] = transaction("create")  { tx =>
       val objType = implicitly[VertexHelper[T]].objectType
       val props = implicitly[VertexHelper[T]].toMap(obj)
 
@@ -201,7 +201,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def createSegment[V1, E : EdgeHelper, V2](v1 : GraphVertex[V1], edge : E, v2 : GraphVertex[V2], direction : Direction) : Future[Segment[V1,E,V2]] = transaction { tx =>
+    def createSegment[V1, E : EdgeHelper, V2](v1 : GraphVertex[V1], edge : E, v2 : GraphVertex[V2], direction : Direction) : Future[Segment[V1,E,V2]] = transaction("createSegment") { tx =>
       val label = implicitly[EdgeHelper[E]].label
       val props = implicitly[EdgeHelper[E]].toMap(edge)
 
@@ -218,7 +218,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def createSegmentUnique[V1, E : EdgeHelper, V2](v1 : GraphVertex[V1], edge : E, v2 : GraphVertex[V2], direction : Direction) : Future[Segment[V1,E,V2]] = transaction { tx =>
+    def createSegmentUnique[V1, E : EdgeHelper, V2](v1 : GraphVertex[V1], edge : E, v2 : GraphVertex[V2], direction : Direction) : Future[Segment[V1,E,V2]] = transaction("createSegmentUnique") { tx =>
       val label = implicitly[EdgeHelper[E]].label
       val props = implicitly[EdgeHelper[E]].toMap(edge)
 
@@ -281,7 +281,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def update[T : VertexHelper](v : GraphVertex[T] ) : Future[GraphVertex[T]] = transaction { tx =>
+    def update[T : VertexHelper](v : GraphVertex[T] ) : Future[GraphVertex[T]] = transaction("update vertex") { tx =>
       val props = implicitly[VertexHelper[T]].toMap(v.obj)
       val allProps = props ++ Map("type" -> v.objType)
 
@@ -294,7 +294,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def update[T : EdgeHelper](v : GraphEdge[T] ) : Future[GraphEdge[T]] = transaction { tx =>
+    def update[T : EdgeHelper](v : GraphEdge[T] ) : Future[GraphEdge[T]] = transaction("update edge") { tx =>
       val props = implicitly[EdgeHelper[T]].toMap(v.obj)
       graphMutation.updateEdge(v.id,props)(txOrRaw(tx))
         .map(toGraphEdge[T])
@@ -303,7 +303,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def updateProperty[T : VertexHelper](v : GraphVertex[T], propName : String, newValue : Any ) : Future[GraphVertex[T]] = transaction { tx =>
+    def updateProperty[T : VertexHelper](v : GraphVertex[T], propName : String, newValue : Any ) : Future[GraphVertex[T]] = transaction("update vertex property") { tx =>
       graphMutation.updateVertexProperty(v.id,propName,newValue)(txOrRaw(tx))
         .flatMap(x => graphQuery.get(v.id)(txOrRaw(tx)).map(toGraphVertex[T]))
     }
@@ -311,7 +311,7 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def updateProperty[T : EdgeHelper](e : GraphEdge[T], propName : String, newValue : Any ) : Future[GraphEdge[T]] = transaction { tx =>
+    def updateProperty[T : EdgeHelper](e : GraphEdge[T], propName : String, newValue : Any ) : Future[GraphEdge[T]] = transaction("update edge property"){ tx =>
       graphMutation.updateEdgeProperty(e.id,propName,newValue)(txOrRaw(tx))
         .flatMap(x => graphQuery.getEdge(e.id)(txOrRaw(tx)).map(toGraphEdge[T]))
     }
@@ -319,21 +319,21 @@ trait GraphAPIModuleImpl extends GraphAPIModule with StandardExecutionContext {
     /**
      * @inheritdoc
      */
-    def delete[T : VertexHelper](vertex : GraphVertex[T]) : Future[String] = transaction { tx =>
+    def delete[T : VertexHelper](vertex : GraphVertex[T]) : Future[String] = transaction("delete vertex") { tx =>
       graphMutation.deleteVertex(vertex.id)(txOrRaw(tx))
     }
 
     /**
      * @inheritdoc
      */
-    def delete[E : EdgeHelper](edge : GraphEdge[E]) : Future[String] = transaction { tx =>
+    def delete[E : EdgeHelper](edge : GraphEdge[E]) : Future[String] = transaction("delete edge") { tx =>
       graphMutation.deleteEdge(edge.id)(txOrRaw(tx))
     }
 
     /**
      * @inheritdoc
      */
-    def validate[T : VertexHelper](v : T) : Future[T] = transaction { tx =>
+    def validate[T : VertexHelper](v : T) : Future[T] = transaction("validate"){ tx =>
       validate(v,txOrRaw(tx))
     }
     private def validate[T : VertexHelper](v : T, graph : Graph) : Future[T] = {

@@ -9,7 +9,7 @@ import scala.concurrent.Future
 trait RawGraph {
   val rawGraph : ScalaGraph
   implicit lazy val graphImplicit : Graph = rawGraph
-  def transaction[T](f : Option[TransactionalGraph] => Future[T]) : Future[T] = f(None)
+  def transaction[T](desc : String)(f : Option[TransactionalGraph] => Future[T]) : Future[T] = f(None)
 }
 
 trait InMemoryRawGraph extends RawGraph with StringGraphIds {

@@ -98,6 +98,13 @@ object GraphAPIModuleSpec extends Specification with NoTimeConversions {
       val result = Await.result(bothModTest.createB(Sample("foo",1)),30 seconds)
       result.obj.fieldA must be equalTo "foo"
     }
+    "allow you to delete a vertex" in new TestContext {
+      Await.result(for {
+        v <- graph.create(Sample("edgequery-delete1",1))
+        d <- graph.delete(v)
+        z <- graph.get[Sample](v.id)
+      } yield z, 30 seconds) must throwA[ObjectNotFoundException]
+    }
   }
 
 }

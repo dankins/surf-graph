@@ -1,4 +1,4 @@
-import com.surf.graph.{SimpleEdgeHelper, DefaultVertexHelper}
+import com.surf.graph.{ObjectNotFoundException, SimpleEdgeHelper, DefaultVertexHelper}
 import com.surf.graph.titan._
 import com.tinkerpop.blueprints.{Edge, Vertex}
 import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
@@ -112,5 +112,22 @@ class TitanGraphModuleSpec extends mutable.Specification with NoTimeConversions{
       result.label must be equalTo "SampleEdge"
     }
 
+  }
+
+  "allow edge deletion" in new TestContext {
+    for {
+      v1 <- graph.create(Sample("edgequery-delete1",1))
+      v2 <- graph.create(Sample("edgequery-delete2",1))
+      e <- graph.createSegment(v1,SampleEdge(),v2)
+      e2 <- graph.delete(e.edge)
+      result <- graph.getEdge[SampleEdge](e.edge.id)
+    } yield (result, v1)
+  }
+  "allow vertex delete" in new TestContext {
+    Await.result(for {
+      v <- graph.create(Sample("vertex-delete1",1))
+      d <- graph.delete(v)
+      z <- graph.get[Sample](v.id)
+    } yield z, 30 seconds) must throwA[ObjectNotFoundException]
   }
 }
