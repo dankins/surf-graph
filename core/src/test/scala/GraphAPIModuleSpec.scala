@@ -105,6 +105,16 @@ object GraphAPIModuleSpec extends Specification with NoTimeConversions {
         z <- graph.get[Sample](v.id)
       } yield z, 30 seconds) must throwA[ObjectNotFoundException]
     }
+    "allow you to get a segment between vertices" in new TestContext {
+      val segment = Await.result(for {
+        v1 <- graph.create(Sample("segment-v1",1))
+        v2 <- graph.create(Sample("segment-v2",1))
+        e <- graph.createSegment(v1,SampleEdge(),v2)
+        x <- graph.getSegmentFromVertices[Sample,SampleEdge,Sample](v1.id,v2.id,implicitly[EdgeHelper[SampleEdge]].label)
+      } yield x, 30 seconds)
+
+      segment.isDefined must beTrue
+    }
   }
 
 }

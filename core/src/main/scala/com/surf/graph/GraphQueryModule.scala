@@ -199,7 +199,7 @@ trait GraphQueryModuleImpl extends GraphQueryModule with StandardExecutionContex
       val segment = graphBase.queryV(v1) { pipe =>
         pipe.as("out").propertyMap.as("out-props").back("out")
           .outE(label).as("edge").propertyMap.as("edge-props").back("edge")
-          .inV.has("id",v2.toString).as("in").propertyMap.as("in-props")
+          .inV.has("id",v2).as("in").propertyMap.as("in-props")
           .select("edge","edge-props","in","in-props","out","out-props")
           .map(graphBase.rowToRawSegment(_))
       }
