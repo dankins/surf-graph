@@ -7,7 +7,7 @@ import org.apache.commons.configuration.BaseConfiguration
 trait TitanGraphModule extends GraphModule
 with GraphAPIModuleImpl
 with GraphQueryModuleImpl
-with GraphMutationModuleImpl
+with TitanGraphMutationModule
 with GraphSystemModuleImpl
 with TitanGraphBaseModule
 with GraphQueryExecutionContext

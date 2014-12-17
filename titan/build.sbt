@@ -11,8 +11,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "ch.qos.logback" % "logback-classic" % "1.1.2" % "test",
   "com.surf.graph" %% "surf-graph-core" % "0.1-SNAPSHOT",
-  "com.thinkaurelius.titan" % "titan-core" % "0.5.0",
-  "com.thinkaurelius.titan" % "titan-cassandra" % "0.5.0",
-  "com.thinkaurelius.titan" % "titan-berkeleyje" % "0.5.0",
-  "com.thinkaurelius.titan" % "titan-es" % "0.5.0"
+  "com.thinkaurelius.titan" % "titan-core" % "0.5.2" exclude("org.slf4j", "slf4j-api"),
+  "com.thinkaurelius.titan" % "titan-cassandra" % "0.5.2" exclude("org.slf4j", "slf4j-api"),
+  "com.thinkaurelius.titan" % "titan-berkeleyje" % "0.5.2" exclude("org.slf4j", "slf4j-api"),
+  "com.thinkaurelius.titan" % "titan-es" % "0.5.2" exclude("org.slf4j", "slf4j-api")
 )

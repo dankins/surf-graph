@@ -1,10 +1,8 @@
-import com.surf.graph.{SimpleEdgeHelper, DefaultVertexHelper}
+import com.surf.graph.{GraphObjectUniqueConstraintException, SimpleEdgeHelper, DefaultVertexHelper}
 import com.surf.graph.titan._
 import com.thinkaurelius.titan.core.TitanGraph
-import com.tinkerpop.blueprints.{Graph, Edge, Vertex}
-import com.tinkerpop.gremlin.scala.GremlinScalaPipeline
+import com.tinkerpop.blueprints.Vertex
 import com.typesafe.scalalogging.LazyLogging
-import org.specs2.specification.Scope
 import org.specs2.time.NoTimeConversions
 
 import scala.concurrent.Await
@@ -69,6 +67,16 @@ class IndexTests extends mutable.Specification with NoTimeConversions with LazyL
 
       logger.info("Complete 'query vertices'")
       success
+    }
+    "enforce unique ids" in {
+      val obj1 = Sample("notunique",1)
+      val obj2 = Sample("unique",1)
+      val obj3 = Sample("notunique",1)
+
+      Await.result(context.graph.create(obj1),30 seconds)
+      Await.result(context.graph.create(obj2),30 seconds)
+      Await.result(context.graph.create(obj3),30 seconds) must throwA[GraphObjectUniqueConstraintException]
+
     }
   }
 }
